@@ -19,9 +19,19 @@
 
 - Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`.
 - Added a forbidden-terms scanner and CI workflow to fail on gambling-related copy.
-- Added Cloud Functions (TypeScript) scaffold with `startSession`, `resolveSession`, and `heartbeatSession` implementations and unit + Firestore-emulator integration tests.
-- Added a GitHub Actions workflow to run the Functions emulator tests on push/PR.
-- Applied branch-protection rules to `main`, then relaxed them for single-developer workflow (direct pushes allowed; force-push/deletion still blocked).
+- Cloud Functions (TypeScript) scaffold created; implemented `startSession`, `resolveSession`, and `heartbeatSession` handlers.
+- Hardened `startSession`: ledger-driven balance checks, idempotency guards, and atomic wallet updates to prevent double-spend.
+- Added an incremental reconciliation job (paged) and a full reconcile job that materializes `users.wallet.credits` from `ledger/*`.
+- Wrote extensive Firestore-emulator integration tests (start/heartbeat, resolveSession idempotency, reconcile) and verified locally — emulator test suite passes.
+- Added GitHub Actions workflow to run the Functions emulator tests and a README CI badge.
+- Created feature branches for incremental work and opened draft PRs; merged PRs into `main` after review.
+- Branch-protection rules were configured during the workflow; adjusted for single-developer iteration where appropriate.
+
+Progress details:
+
+- Tests: emulator integration tests are passing locally (functions tests suite completed successfully).
+- Ledger & balances: ledger is the source-of-truth; materialized `users.wallet.credits` via reconcile job.
+- Repository: CI workflows, forbidden-term scanner, and docs updated to reflect wording guardrails.
 
 These are pragmatic operational steps taken to keep the repo safe and testable while you iterate locally.
 
