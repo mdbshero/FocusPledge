@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 
 admin.initializeApp();
+import reconcileIncremental from './reconcile/incrementalReconcile';
 const db = admin.firestore();
 
 type Resolution = 'SUCCESS' | 'FAILURE';
@@ -109,7 +110,7 @@ export async function handleResolveSession(data: any, context: any) {
 
 export const resolveSession = functions.https.onCall(handleResolveSession);
 
-export const startSession = functions.https.onCall(async (data, context) => {
+export async function handleStartSession(data: any, context: any) {
   const userId: string = data?.userId;
   const pledgeAmount: number = data?.pledgeAmount;
   const durationMinutes: number = data?.durationMinutes || 60;
@@ -130,6 +131,33 @@ export const startSession = functions.https.onCall(async (data, context) => {
     if (!q.empty) {
       return { status: 'already_started', sessionId: q.docs[0].id };
     }
+
+    // Compute derived balance by aggregating ledger entries for the user.
+    // If no ledger entries exist, fall back to the stored `users.wallet.credits` value.
+    const ledgerSnap = await tx.get(db.collection('ledger').where('userId', '==', userId));
+    let derivedCredits = 0;
+    ledgerSnap.docs.forEach(d => {
+      const e: any = d.data();
+      const amt = Number(e.amount || 0);
+      if (e.kind === 'credits_purchase' || e.kind === 'credits_refund') derivedCredits += amt;
+      if (e.kind === 'credits_burn' || e.kind === 'credits_lock') derivedCredits -= amt;
+    });
+
+    const userRef = db.collection('users').doc(userId);
+    const userSnap = await tx.get(userRef);
+    const reportedCredits = userSnap.exists ? (userSnap.data()?.wallet?.credits || 0) : 0;
+
+    if (ledgerSnap.empty) {
+      derivedCredits = reportedCredits;
+    }
+
+    if (derivedCredits < pledgeAmount) {
+      throw new functions.https.HttpsError('failed-precondition', 'Insufficient credits');
+    }
+
+    // Atomically decrement the user's stored wallet balance to prevent races
+    const newCredits = derivedCredits - pledgeAmount;
+    tx.set(userRef, { wallet: { credits: newCredits } }, { merge: true } as any);
 
     // Lock credits via ledger entry
     tx.set(ledgerRef, {
@@ -157,9 +185,11 @@ export const startSession = functions.https.onCall(async (data, context) => {
 
     return { status: 'started', sessionId };
   });
-});
+}
 
-export const heartbeatSession = functions.https.onCall(async (data, context) => {
+export const startSession = functions.https.onCall(handleStartSession);
+
+export async function handleHeartbeatSession(data: any, context: any) {
   const sessionId: string = data?.sessionId;
   if (!sessionId) {
     throw new functions.https.HttpsError('invalid-argument', 'Missing sessionId');
@@ -167,4 +197,42 @@ export const heartbeatSession = functions.https.onCall(async (data, context) => 
   const sessionRef = db.collection('sessions').doc(sessionId);
   await sessionRef.update({ 'native.lastCheckedAt': admin.firestore.FieldValue.serverTimestamp() });
   return { status: 'ok' };
-});
+}
+
+export const heartbeatSession = functions.https.onCall(handleHeartbeatSession);
+
+// Reconciliation: aggregate ledger entries per user and materialize `users.wallet.credits`.
+export async function handleReconcileAllUsers(data: any, context: any) {
+  const ledgerSnap = await db.collection('ledger').get();
+  const sums = new Map<string, number>();
+  ledgerSnap.docs.forEach(d => {
+    const e: any = d.data();
+    const userId = e.userId;
+    if (!userId) return;
+    const amt = Number(e.amount || 0);
+    let cur = sums.get(userId) || 0;
+    if (e.kind === 'credits_purchase' || e.kind === 'credits_refund') cur += amt;
+    if (e.kind === 'credits_burn' || e.kind === 'credits_lock') cur -= amt;
+    sums.set(userId, cur);
+  });
+
+  const batch = db.batch();
+  for (const [userId, credits] of sums.entries()) {
+    const userRef = db.collection('users').doc(userId);
+    batch.set(userRef, { wallet: { credits } }, { merge: true } as any);
+  }
+
+  if (sums.size > 0) await batch.commit();
+  return { reconciledUsers: sums.size };
+}
+
+// Scheduled wrapper (runs in production every 5 minutes)
+export const reconcileAllUsers = functions.pubsub.schedule('every 5 minutes').onRun(handleReconcileAllUsers as any);
+
+// Incremental reconcile scheduled wrapper (runs every 15 minutes)
+export async function handleReconcileIncremental(data: any, context: any) {
+  const result = await reconcileIncremental(db, { pageSize: 500 })
+  return result
+}
+
+export const reconcileIncrementalScheduled = functions.pubsub.schedule('every 15 minutes').onRun(handleReconcileIncremental as any);
