@@ -1,0 +1,15 @@
+image: ubuntu:22.04
+
+stages:
+  - lint
+
+forbidden_terms_check:
+  stage: lint
+  before_script:
+    - apt-get update -y
+    - apt-get install -y grep git
+  script:
+    - bash tools/check_forbidden_terms.sh
+  only:
+    - branches
+    - merge_requests

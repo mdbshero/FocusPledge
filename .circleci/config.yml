@@ -1,0 +1,17 @@
+version: 2.1
+jobs:
+  forbidden_terms:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Run forbidden terms check
+          command: |
+            bash tools/check_forbidden_terms.sh
+
+workflows:
+  version: 2
+  check_forbidden_terms:
+    jobs:
+      - forbidden_terms
