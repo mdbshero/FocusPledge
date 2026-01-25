@@ -25,7 +25,6 @@
 
 These are pragmatic operational steps taken to keep the repo safe and testable while you iterate locally.
 
-
 ## Terminology (Session 1 alignment)
 
 - **Approved terms:** Focus Credits (FC), Ash, Obsidian, Frozen Votes, Redemption Session, Pledge Session, Impact Points, Credits pack.

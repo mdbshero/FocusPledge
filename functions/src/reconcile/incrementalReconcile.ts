@@ -18,7 +18,7 @@ import admin from 'firebase-admin'
 export async function reconcileIncremental(
   db: FirebaseFirestore.Firestore,
   opts: { pageSize?: number; resumeDocPath?: string } = {}
-): Promise<{ processed: number; resumeToken?: { createdAt?: FirebaseFirestore.Timestamp; entryId?: string }>{
+): Promise<{ processed: number; resumeToken?: { createdAt?: FirebaseFirestore.Timestamp; entryId?: string } }> {
   const pageSize = opts.pageSize || 500
   const resumeDocPath = opts.resumeDocPath || 'reconcile_state/incremental'
 

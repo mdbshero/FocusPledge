@@ -5,6 +5,7 @@ import { reconcileIncremental } from '../../src/reconcile/incrementalReconcile';
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-project';
 process.env.FIREBASE_CONFIG = process.env.FIREBASE_CONFIG || JSON.stringify({ projectId: process.env.GCLOUD_PROJECT });
 
+if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 describe('incremental reconcile paging', function () {

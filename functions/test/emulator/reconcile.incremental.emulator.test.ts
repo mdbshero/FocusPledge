@@ -1,5 +1,8 @@
 import { expect } from 'chai'
+import admin from 'firebase-admin'
 import { reconcileIncremental } from '../../src/reconcile/incrementalReconcile'
+
+if (!admin.apps.length) admin.initializeApp()
 
 describe('incremental reconcile scaffold', () => {
   it('exports reconcileIncremental function', async () => {
