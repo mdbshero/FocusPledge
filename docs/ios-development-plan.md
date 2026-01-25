@@ -15,6 +15,17 @@
 
 ---
 
+## Recent updates (2026-01-25)
+
+- Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`.
+- Added a forbidden-terms scanner and CI workflow to fail on gambling-related copy.
+- Added Cloud Functions (TypeScript) scaffold with `startSession`, `resolveSession`, and `heartbeatSession` implementations and unit + Firestore-emulator integration tests.
+- Added a GitHub Actions workflow to run the Functions emulator tests on push/PR.
+- Applied branch-protection rules to `main`, then relaxed them for single-developer workflow (direct pushes allowed; force-push/deletion still blocked).
+
+These are pragmatic operational steps taken to keep the repo safe and testable while you iterate locally.
+
+
 ## Terminology (Session 1 alignment)
 
 - **Approved terms:** Focus Credits (FC), Ash, Obsidian, Frozen Votes, Redemption Session, Pledge Session, Impact Points, Credits pack.
