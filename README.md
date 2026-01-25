@@ -1,5 +1,7 @@
 # focus_pledge
 
+![Functions Emulator Tests](https://github.com/mdbshero/FocusPledge/actions/workflows/functions-emulator-tests.yml/badge.svg)
+
 A new Flutter project.
 
 ## FocusPledge iOS plan
