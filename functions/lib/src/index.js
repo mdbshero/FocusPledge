@@ -36,12 +36,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stripeWebhook = exports.handleStripeWebhook = exports.createCreditsPurchaseIntent = exports.reconcileIncrementalScheduled = exports.reconcileAllUsers = exports.heartbeatSession = exports.startSession = exports.resolveSession = void 0;
+exports.stripeWebhook = exports.handleStripeWebhook = exports.createCreditsPurchaseIntent = exports.expireStaleSessionsScheduled = exports.reconcileIncrementalScheduled = exports.reconcileAllUsers = exports.heartbeatSession = exports.startSession = exports.resolveSession = void 0;
 exports.handleResolveSession = handleResolveSession;
 exports.handleStartSession = handleStartSession;
 exports.handleHeartbeatSession = handleHeartbeatSession;
 exports.handleReconcileAllUsers = handleReconcileAllUsers;
 exports.handleReconcileIncremental = handleReconcileIncremental;
+exports.handleExpireStaleSessions = handleExpireStaleSessions;
 exports.handleCreateCreditsPurchaseIntent = handleCreateCreditsPurchaseIntent;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
@@ -257,6 +258,57 @@ async function handleReconcileIncremental(data, context) {
     return result;
 }
 exports.reconcileIncrementalScheduled = functions.pubsub.schedule('every 15 minutes').onRun(handleReconcileIncremental);
+// ============================================================================
+// SCHEDULED SESSION EXPIRY JOB
+// ============================================================================
+/**
+ * Finds sessions with stale heartbeats and auto-resolves them as FAILURE
+ * Runs every 5 minutes to catch sessions that should have ended but haven't been resolved
+ */
+async function handleExpireStaleSessions(data, context) {
+    const now = Date.now();
+    const graceMinutes = 10; // Grace period after expected session end
+    const cutoffTime = admin.firestore.Timestamp.fromMillis(now - graceMinutes * 60 * 1000);
+    console.log(`Checking for stale sessions with lastCheckedAt < ${cutoffTime.toDate().toISOString()}`);
+    // Find ACTIVE sessions with stale heartbeat
+    const staleSessionsSnap = await db
+        .collection('sessions')
+        .where('status', '==', 'ACTIVE')
+        .where('native.lastCheckedAt', '<', cutoffTime)
+        .limit(50) // Process in batches
+        .get();
+    if (staleSessionsSnap.empty) {
+        console.log('No stale sessions found');
+        return { processed: 0 };
+    }
+    console.log(`Found ${staleSessionsSnap.size} stale sessions to resolve`);
+    let resolved = 0;
+    let failed = 0;
+    // Process each stale session
+    for (const doc of staleSessionsSnap.docs) {
+        const session = doc.data();
+        const sessionId = session.sessionId;
+        const idempotencyKey = `auto_expire_${sessionId}_${now}`;
+        try {
+            // Call resolveSession to mark as FAILURE
+            await handleResolveSession({
+                sessionId,
+                resolution: 'FAILURE',
+                idempotencyKey,
+                reason: 'no_heartbeat',
+            }, {});
+            console.log(`Auto-resolved stale session: ${sessionId}`);
+            resolved++;
+        }
+        catch (err) {
+            console.error(`Failed to auto-resolve session ${sessionId}:`, err.message);
+            failed++;
+        }
+    }
+    console.log(`Expiry job complete: ${resolved} resolved, ${failed} failed`);
+    return { processed: staleSessionsSnap.size, resolved, failed };
+}
+exports.expireStaleSessionsScheduled = functions.pubsub.schedule('every 5 minutes').onRun(handleExpireStaleSessions);
 // ============================================================================
 // STRIPE INTEGRATION
 // ============================================================================
