@@ -56,7 +56,7 @@ describe('resolveSession emulator integration', function () {
   });
 
   it('failure path: writes credits_burn + ash_grant and sets redemptionExpiry', async () => {
-    await db.collection('users').doc('user_2').set({ uid: 'user_2' });
+    await db.collection('users').doc('user_2').set({ uid: 'user_2', wallet: { purgatoryVotes: 0 } });
     await db.collection('sessions').doc('sess_fail').set({
       sessionId: 'sess_fail',
       userId: 'user_2',
@@ -79,6 +79,7 @@ describe('resolveSession emulator integration', function () {
 
     const userDoc = await db.collection('users').doc('user_2').get();
     expect(userDoc.data()?.deadlines?.redemptionExpiry).to.exist;
+    expect(userDoc.data()?.wallet?.purgatoryVotes).to.equal(50);
   });
 
   it('idempotency: repeated calls with same key do not duplicate ledger entries', async () => {

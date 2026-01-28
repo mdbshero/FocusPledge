@@ -95,7 +95,12 @@ export async function handleResolveSession(data: any, context: any) {
 
     const userRef = db.collection('users').doc(userId);
     const redemptionExpiry = admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
-    tx.update(userRef, { 'deadlines.redemptionExpiry': redemptionExpiry });
+    
+    // Update user: set redemption deadline and increment purgatoryVotes (Frozen Votes)
+    tx.set(userRef, {
+      deadlines: { redemptionExpiry },
+      wallet: { purgatoryVotes: admin.firestore.FieldValue.increment(pledgedAmount) }
+    }, { merge: true } as any);
 
     tx.update(sessionRef, {
       status: 'FAILED',
