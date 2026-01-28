@@ -15,15 +15,17 @@
 
 ---
 
-## Recent updates (2026-01-25)
+## Recent updates (2026-01-28)
 
 - Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`.
 - Added a forbidden-terms scanner and CI workflow to fail on gambling-related copy.
 - Cloud Functions (TypeScript) scaffold created; implemented `startSession`, `resolveSession`, and `heartbeatSession` handlers.
 - Hardened `startSession`: ledger-driven balance checks, idempotency guards, and atomic wallet updates to prevent double-spend.
+- **✅ COMPLETE: `resolveSession()` implementation** with purgatoryVotes (Frozen Votes) increment on failure, redemptionExpiry deadline, and full idempotency.
 - Added an incremental reconciliation job (paged) and a full reconcile job that materializes `users.wallet.credits` from `ledger/*`.
-- Wrote extensive Firestore-emulator integration tests (start/heartbeat, resolveSession idempotency, reconcile) and verified locally — emulator test suite passes.
+- Wrote extensive Firestore-emulator integration tests (start/heartbeat, resolveSession idempotency, reconcile) and verified locally — **11/11 tests passing**.
 - Added GitHub Actions workflow to run the Functions emulator tests and a README CI badge.
+- **✅ COMPLETE: Stripe integration specification** with pack SKUs, PaymentIntent flow, webhook handler design, and dual idempotency strategy.
 - Created feature branches for incremental work and opened draft PRs; merged PRs into `main` after review.
 - Branch-protection rules were configured during the workflow; adjusted for single-developer iteration where appropriate.
 
@@ -301,7 +303,7 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Sun Jan 25 |         ~~Plan alignment + terminology~~ | 1–1.5h | Doc aligned end-to-end to Credits/Ash/Obsidian and skill-first wording        |
 | Mon Jan 26 |        ~~Firestore schema + invariants~~ |   1–2h | Schema section drafted (users/sessions/ledger invariants)                     |
 | Tue Jan 27 |    ~~Settlement spec: `resolveSession`~~ |   1–2h | Idempotent state machine + ledger entry types documented                      |
-| Wed Jan 28 |                Stripe Credits packs spec |   1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented                |
+| Wed Jan 28 |         ~~Stripe Credits packs spec~~    |   1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented                |
 | Thu Jan 29 |                   iOS native bridge spec |   1–2h | MethodChannel API + App Group keys + polling loop defined                     |
 | Fri Jan 30 |          Flutter UX map + copy checklist |   1–2h | Screen list + UX states + skill-first copy checklist                          |
 | Sat Jan 31 |               Repo scaffolding checklist |   1–2h | Concrete steps to add Firebase/Functions/Stripe deps + local dev flow         |
