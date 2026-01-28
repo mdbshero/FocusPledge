@@ -303,7 +303,7 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Sun Jan 25 |         ~~Plan alignment + terminology~~ | 1–1.5h | Doc aligned end-to-end to Credits/Ash/Obsidian and skill-first wording        |
 | Mon Jan 26 |        ~~Firestore schema + invariants~~ |   1–2h | Schema section drafted (users/sessions/ledger invariants)                     |
 | Tue Jan 27 |    ~~Settlement spec: `resolveSession`~~ |   1–2h | Idempotent state machine + ledger entry types documented                      |
-| Wed Jan 28 |         ~~Stripe Credits packs spec~~    |   1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented                |
+| Wed Jan 28 |            ~~Stripe Credits packs spec~~ |   1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented                |
 | Thu Jan 29 |                   iOS native bridge spec |   1–2h | MethodChannel API + App Group keys + polling loop defined                     |
 | Fri Jan 30 |          Flutter UX map + copy checklist |   1–2h | Screen list + UX states + skill-first copy checklist                          |
 | Sat Jan 31 |               Repo scaffolding checklist |   1–2h | Concrete steps to add Firebase/Functions/Stripe deps + local dev flow         |

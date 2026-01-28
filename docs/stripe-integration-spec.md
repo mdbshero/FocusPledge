@@ -23,20 +23,22 @@ FocusPledge uses **Stripe** for in-app credits purchases on iOS. Credits are ful
 ## Credits Pack SKUs
 
 ### Reference Rate (Internal)
+
 **100 FC = $1.00 USD**
 
 This rate is for internal consistency. Actual pricing can include value-add margins.
 
 ### Recommended Pack Structure
 
-| Pack ID | Credits | USD Price | $/100 FC | Value Bonus | Target User |
-|---------|---------|-----------|----------|-------------|-------------|
-| `starter_pack` | 500 FC | $5.99 | $1.20 | 20% premium | First-time buyers |
-| `standard_pack` | 1000 FC | $9.99 | $1.00 | At-rate | Regular users |
-| `value_pack` | 2500 FC | $19.99 | $0.80 | 20% bonus | Engaged users |
-| `premium_pack` | 5000 FC | $34.99 | $0.70 | 30% bonus | Power users |
+| Pack ID         | Credits | USD Price | $/100 FC | Value Bonus | Target User       |
+| --------------- | ------- | --------- | -------- | ----------- | ----------------- |
+| `starter_pack`  | 500 FC  | $5.99     | $1.20    | 20% premium | First-time buyers |
+| `standard_pack` | 1000 FC | $9.99     | $1.00    | At-rate     | Regular users     |
+| `value_pack`    | 2500 FC | $19.99    | $0.80    | 20% bonus   | Engaged users     |
+| `premium_pack`  | 5000 FC | $34.99    | $0.70    | 30% bonus   | Power users       |
 
 **Pricing notes:**
+
 - Starter pack has a premium to offset transaction fees + onboarding costs
 - Value/Premium packs offer bonus credits (psychological anchor for retention)
 - All packs are **non-consumable in-app purchase framing** but fulfilled as credits balance
@@ -44,6 +46,7 @@ This rate is for internal consistency. Actual pricing can include value-add marg
 ### SKU Metadata (Stripe Product)
 
 Each pack is a Stripe Product with:
+
 - `product_id`: e.g., `focus_credits_1000`
 - `metadata.pack_id`: `standard_pack`
 - `metadata.credits_amount`: `1000`
@@ -98,7 +101,7 @@ User completes payment → Stripe processes → Webhook fires
 export const createCreditsPurchaseIntent = functions.https.onCall(
   async (data: CreatePurchaseIntentRequest, context: CallableContext) => {
     // Implementation
-  }
+  },
 );
 ```
 
@@ -106,8 +109,8 @@ export const createCreditsPurchaseIntent = functions.https.onCall(
 
 ```typescript
 interface CreatePurchaseIntentRequest {
-  packId: string;           // e.g., "standard_pack"
-  idempotencyKey: string;   // client-generated UUID for request deduplication
+  packId: string; // e.g., "standard_pack"
+  idempotencyKey: string; // client-generated UUID for request deduplication
 }
 ```
 
@@ -122,6 +125,7 @@ interface CreatePurchaseIntentRequest {
 ### Logic
 
 1. Fetch pack metadata from Firestore or hardcoded config:
+
    ```typescript
    const packs = {
      starter_pack: { credits: 500, priceUsd: 599 },
@@ -132,26 +136,28 @@ interface CreatePurchaseIntentRequest {
    ```
 
 2. Check idempotency:
+
    ```typescript
    const existingIntent = await db
-     .collection('paymentIntents')
-     .where('userId', '==', userId)
-     .where('idempotencyKey', '==', idempotencyKey)
+     .collection("paymentIntents")
+     .where("userId", "==", userId)
+     .where("idempotencyKey", "==", idempotencyKey)
      .limit(1)
      .get();
-   
+
    if (!existingIntent.empty) {
      return { client_secret: existingIntent.docs[0].data().client_secret };
    }
    ```
 
 3. Create Stripe PaymentIntent:
+
    ```typescript
    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-   
+
    const paymentIntent = await stripe.paymentIntents.create({
      amount: pack.priceUsd, // in cents
-     currency: 'usd',
+     currency: "usd",
      metadata: {
        userId,
        packId,
@@ -163,15 +169,16 @@ interface CreatePurchaseIntentRequest {
    ```
 
 4. Store pending purchase record:
+
    ```typescript
-   await db.collection('paymentIntents').doc(paymentIntent.id).set({
+   await db.collection("paymentIntents").doc(paymentIntent.id).set({
      paymentIntentId: paymentIntent.id,
      userId,
      packId,
      creditsAmount: pack.credits,
      priceUsd: pack.priceUsd,
      idempotencyKey,
-     status: 'pending',
+     status: "pending",
      createdAt: admin.firestore.FieldValue.serverTimestamp(),
    });
    ```
@@ -206,7 +213,7 @@ interface CreatePurchaseIntentResponse {
 export const handleStripeWebhook = functions.https.onRequest(
   async (req: Request, res: Response) => {
     // Implementation
-  }
+  },
 );
 ```
 
@@ -215,6 +222,7 @@ export const handleStripeWebhook = functions.https.onRequest(
 Primary event: `payment_intent.succeeded`
 
 Optional (for monitoring):
+
 - `payment_intent.payment_failed`
 - `payment_intent.canceled`
 
@@ -224,13 +232,13 @@ Optional (for monitoring):
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-const sig = req.headers['stripe-signature'] as string;
+const sig = req.headers["stripe-signature"] as string;
 let event: Stripe.Event;
 
 try {
   event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
 } catch (err) {
-  console.error('Webhook signature verification failed:', err.message);
+  console.error("Webhook signature verification failed:", err.message);
   res.status(400).send(`Webhook Error: ${err.message}`);
   return;
 }
@@ -246,7 +254,7 @@ Each Stripe event has a unique `event.id` (e.g., `evt_1AbC2dEfGhIjKlMn`). Store 
 
 ```typescript
 const eventId = event.id;
-const eventRef = db.collection('stripeEvents').doc(eventId);
+const eventRef = db.collection("stripeEvents").doc(eventId);
 
 const eventSnap = await eventRef.get();
 if (eventSnap.exists) {
@@ -263,19 +271,22 @@ For `payment_intent.succeeded`, also check if ledger entry exists:
 ```typescript
 const paymentIntentId = event.data.object.id;
 const ledgerQuery = await db
-  .collection('ledger')
-  .where('metadata.paymentIntentId', '==', paymentIntentId)
+  .collection("ledger")
+  .where("metadata.paymentIntentId", "==", paymentIntentId)
   .limit(1)
   .get();
 
 if (!ledgerQuery.empty) {
-  console.log(`Ledger entry for PaymentIntent ${paymentIntentId} exists. Skipping.`);
+  console.log(
+    `Ledger entry for PaymentIntent ${paymentIntentId} exists. Skipping.`,
+  );
   res.status(200).send({ received: true });
   return;
 }
 ```
 
 **Why two checks?**
+
 - Event ID check: fast path for exact replay
 - PaymentIntent check: defense against event ID spoofing or duplicate processing via different events
 
@@ -299,10 +310,10 @@ await db.runTransaction(async (tx) => {
   });
 
   // 2. Post ledger entry
-  const ledgerRef = db.collection('ledger').doc();
+  const ledgerRef = db.collection("ledger").doc();
   tx.set(ledgerRef, {
     entryId: ledgerRef.id,
-    kind: 'credits_purchase',
+    kind: "credits_purchase",
     userId,
     amount: creditsAmount,
     metadata: {
@@ -316,7 +327,7 @@ await db.runTransaction(async (tx) => {
   });
 
   // 3. Update materialized balance
-  const userRef = db.collection('users').doc(userId);
+  const userRef = db.collection("users").doc(userId);
   tx.set(
     userRef,
     {
@@ -325,13 +336,13 @@ await db.runTransaction(async (tx) => {
         lifetimePurchased: admin.firestore.FieldValue.increment(creditsAmount),
       },
     },
-    { merge: true }
+    { merge: true },
   );
 
   // 4. Update paymentIntent record status
-  const intentRef = db.collection('paymentIntents').doc(paymentIntent.id);
+  const intentRef = db.collection("paymentIntents").doc(paymentIntent.id);
   tx.update(intentRef, {
-    status: 'succeeded',
+    status: "succeeded",
     fulfilledAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 });
@@ -357,6 +368,7 @@ Stripe will retry failed webhooks (non-200 responses) for up to 3 days.
 Purpose: Track pending/completed purchases client-initiated.
 
 Schema:
+
 ```typescript
 {
   paymentIntentId: string;
@@ -376,10 +388,11 @@ Schema:
 Purpose: Idempotency store for processed webhook events.
 
 Schema:
+
 ```typescript
 {
-  eventId: string;            // Stripe event.id
-  type: string;               // e.g., "payment_intent.succeeded"
+  eventId: string; // Stripe event.id
+  type: string; // e.g., "payment_intent.succeeded"
   processedAt: Timestamp;
   paymentIntentId: string;
   userId: string;
@@ -393,18 +406,19 @@ Index: `eventId` (document ID, auto-indexed)
 Purpose: Immutable record of all credit transactions (see main spec).
 
 Relevant entry for purchases:
+
 ```typescript
 {
   entryId: string;
-  kind: 'credits_purchase';
+  kind: "credits_purchase";
   userId: string;
-  amount: number;             // credits amount
+  amount: number; // credits amount
   metadata: {
     paymentIntentId: string;
     packId: string;
     priceUsd: number;
     currency: string;
-  };
+  }
   createdAt: Timestamp;
   idempotencyKey: string;
 }
@@ -433,21 +447,21 @@ func purchaseCredits(packId: String) async throws {
     "packId": packId,
     "idempotencyKey": UUID().uuidString
   ])
-  
+
   let clientSecret = result.data["client_secret"] as! String
-  
+
   // 2. Present Stripe Payment Sheet
   var configuration = PaymentSheet.Configuration()
   configuration.merchantDisplayName = "FocusPledge"
   configuration.allowsDelayedPaymentMethods = false
-  
+
   let paymentSheet = PaymentSheet(
     paymentIntentClientSecret: clientSecret,
     configuration: configuration
   )
-  
+
   let result = try await paymentSheet.present(from: viewController)
-  
+
   switch result {
   case .completed:
     print("Payment succeeded! Credits will be added shortly.")
@@ -467,7 +481,7 @@ func purchaseCredits(packId: String) async throws {
 db.collection("users").document(userId).addSnapshotListener { snapshot, error in
   guard let data = snapshot?.data(),
         let credits = data["wallet"]?["credits"] as? Int else { return }
-  
+
   // Update UI
   self.creditsLabel.text = "\(credits) FC"
 }
@@ -478,25 +492,30 @@ db.collection("users").document(userId).addSnapshotListener { snapshot, error in
 ## Security Considerations
 
 ### 1. Webhook Signature Verification
+
 - ✅ Always verify `stripe-signature` header before processing
 - ✅ Use environment variable for webhook secret (never hardcode)
 - ✅ Return 400 for invalid signatures (prevents spoofing)
 
 ### 2. Idempotency Enforcement
+
 - ✅ Check `stripeEvents/{eventId}` before processing
 - ✅ Check `ledger` for existing `paymentIntentId` as secondary defense
 - ✅ Use Firestore transactions to ensure atomic writes
 
 ### 3. Metadata Validation
+
 - ✅ Validate `userId` in PaymentIntent metadata matches authenticated user (if possible)
 - ✅ Verify `creditsAmount` matches expected pack configuration
 - ✅ Reject if metadata is missing or malformed
 
 ### 4. Rate Limiting (Future)
+
 - Consider rate-limiting `createCreditsPurchaseIntent()` to prevent abuse
 - Stripe has built-in fraud detection; rely on it initially
 
 ### 5. Secrets Management
+
 - ✅ Store Stripe keys as Firebase secrets:
   ```bash
   firebase functions:secrets:set STRIPE_SECRET_KEY
@@ -522,13 +541,13 @@ db.collection("users").document(userId).addSnapshotListener { snapshot, error in
 
 ### Test Cases
 
-| Test Case | Expected Outcome |
-|-----------|------------------|
-| Valid purchase → webhook succeeds | Ledger entry created, balance updated |
-| Replay webhook (same event ID) | Returns 200, no duplicate credit |
-| Replay webhook (same PaymentIntent ID) | Returns 200, no duplicate credit |
-| Invalid signature | Returns 400, no processing |
-| Malformed metadata | Returns 200, logged error, no fulfillment |
+| Test Case                                | Expected Outcome                            |
+| ---------------------------------------- | ------------------------------------------- |
+| Valid purchase → webhook succeeds        | Ledger entry created, balance updated       |
+| Replay webhook (same event ID)           | Returns 200, no duplicate credit            |
+| Replay webhook (same PaymentIntent ID)   | Returns 200, no duplicate credit            |
+| Invalid signature                        | Returns 400, no processing                  |
+| Malformed metadata                       | Returns 200, logged error, no fulfillment   |
 | Concurrent webhooks (same PaymentIntent) | Only one creates ledger entry (transaction) |
 
 ### Production Cutover
@@ -552,7 +571,7 @@ db.collection("users").document(userId).addSnapshotListener { snapshot, error in
 ### Logging (Cloud Functions)
 
 ```typescript
-console.log('[STRIPE] Purchase fulfilled', {
+console.log("[STRIPE] Purchase fulfilled", {
   userId,
   creditsAmount,
   paymentIntentId,
@@ -578,6 +597,7 @@ console.log('[STRIPE] Purchase fulfilled', {
 **Detection:** User reports payment succeeded but no credits
 
 **Recovery:**
+
 1. Check Stripe Dashboard → Webhooks → Recent Events
 2. Manually replay event from Dashboard
 3. If event was never sent, query PaymentIntent by ID and manually fulfill:
@@ -593,6 +613,7 @@ console.log('[STRIPE] Purchase fulfilled', {
 **Detection:** Webhook returns 500, Stripe retries
 
 **Recovery:**
+
 - Stripe will automatically retry for 3 days
 - If retries exhausted, manually replay event
 
@@ -603,6 +624,7 @@ console.log('[STRIPE] Purchase fulfilled', {
 **Detection:** User balance higher than expected, duplicate ledger entries
 
 **Recovery:**
+
 1. Identify duplicate ledger entries (same `paymentIntentId`)
 2. Post corrective `admin_correction` ledger entry (negative amount)
 3. Update materialized balance via reconciliation job
@@ -612,12 +634,14 @@ console.log('[STRIPE] Purchase fulfilled', {
 ## Configuration Checklist
 
 ### Development Environment
+
 - [ ] Stripe test mode account created
 - [ ] Test API keys added to Firebase secrets
 - [ ] Webhook endpoint deployed and URL added to Stripe Dashboard (test mode)
 - [ ] Stripe CLI installed for local webhook testing
 
 ### Production Environment
+
 - [ ] Stripe production account verified (business details submitted)
 - [ ] Production API keys added to Firebase secrets
 - [ ] Webhook endpoint URL added to Stripe Dashboard (production mode)
@@ -657,6 +681,6 @@ This spec defines a **secure, idempotent, auditable** Stripe integration for Foc
 ✅ **Idempotent:** Webhooks can be replayed safely  
 ✅ **Auditable:** Every credit has an immutable ledger entry  
 ✅ **Secure:** Signature verification prevents spoofing  
-✅ **Testable:** Full test mode workflow with Stripe CLI  
+✅ **Testable:** Full test mode workflow with Stripe CLI
 
 Implementation can proceed with confidence that the design is robust and compliant with FocusPledge's security-first principles.

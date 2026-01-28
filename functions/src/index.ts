@@ -1,9 +1,17 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import Stripe from 'stripe';
 
 if (!admin.apps.length) admin.initializeApp();
 import reconcileIncremental from './reconcile/incrementalReconcile';
 const db = admin.firestore();
+
+// Initialize Stripe (will use process.env.STRIPE_SECRET_KEY from Firebase secrets)
+// In test environment, use a dummy key if not provided
+const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_for_tests';
+const stripe = new Stripe(stripeKey, {
+  apiVersion: '2026-01-28.clover',
+});
 
 type Resolution = 'SUCCESS' | 'FAILURE';
 
@@ -241,3 +249,233 @@ export async function handleReconcileIncremental(data: any, context: any) {
 }
 
 export const reconcileIncrementalScheduled = functions.pubsub.schedule('every 15 minutes').onRun(handleReconcileIncremental as any);
+
+// ============================================================================
+// STRIPE INTEGRATION
+// ============================================================================
+
+/**
+ * Webhook handler for Stripe events
+ * Verifies signature and processes payment_intent.succeeded events
+ */
+export const handleStripeWebhook = functions.https.onRequest(async (req, res) => {
+  const sig = req.headers['stripe-signature'] as string;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET not configured');
+    res.status(500).send('Webhook secret not configured');
+    return;
+  }
+
+  let event: Stripe.Event;
+
+  try {
+    // Verify webhook signature
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  // Idempotency check: have we already processed this event?
+  const eventId = event.id;
+  const eventRef = db.collection('stripeEvents').doc(eventId);
+
+  try {
+    const eventSnap = await eventRef.get();
+    if (eventSnap.exists) {
+      console.log(`Event ${eventId} already processed. Returning 200.`);
+      res.status(200).send({ received: true, status: 'already_processed' });
+      return;
+    }
+
+    // Handle specific event types
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event, eventRef);
+        break;
+      
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event, eventRef);
+        break;
+      
+      case 'payment_intent.canceled':
+        await handlePaymentIntentCanceled(event, eventRef);
+        break;
+      
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+        // Mark as processed even if we don't handle it
+        await eventRef.set({
+          eventId,
+          type: event.type,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'ignored',
+        });
+    }
+
+    res.status(200).send({ received: true });
+  } catch (error: any) {
+    console.error('Error processing webhook:', error);
+    res.status(500).send(`Webhook processing error: ${error.message}`);
+  }
+});
+
+/**
+ * Handle payment_intent.succeeded event
+ * Fulfills credits purchase by posting ledger entry and updating user balance
+ */
+async function handlePaymentIntentSucceeded(event: Stripe.Event, eventRef: FirebaseFirestore.DocumentReference) {
+  const paymentIntent = event.data.object as Stripe.PaymentIntent;
+  const userId = paymentIntent.metadata.userId;
+  const creditsAmount = Number(paymentIntent.metadata.creditsAmount);
+  const packId = paymentIntent.metadata.packId;
+  const idempotencyKey = paymentIntent.metadata.idempotencyKey || `pi_${paymentIntent.id}`;
+
+  if (!userId || !creditsAmount || !packId) {
+    console.error('Missing required metadata in PaymentIntent:', paymentIntent.metadata);
+    throw new Error('Invalid PaymentIntent metadata');
+  }
+
+  // Secondary idempotency check: verify no ledger entry exists for this PaymentIntent
+  const ledgerQuery = await db
+    .collection('ledger')
+    .where('metadata.paymentIntentId', '==', paymentIntent.id)
+    .limit(1)
+    .get();
+
+  if (!ledgerQuery.empty) {
+    console.log(`Ledger entry for PaymentIntent ${paymentIntent.id} already exists. Skipping fulfillment.`);
+    
+    // Still mark event as processed
+    await eventRef.set({
+      eventId: event.id,
+      type: event.type,
+      processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paymentIntentId: paymentIntent.id,
+      userId,
+      status: 'already_fulfilled',
+    });
+    
+    return;
+  }
+
+  // Fulfill purchase in a transaction
+  await db.runTransaction(async (tx) => {
+    // 1. Mark event as processed
+    tx.set(eventRef, {
+      eventId: event.id,
+      type: event.type,
+      processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paymentIntentId: paymentIntent.id,
+      userId,
+      status: 'fulfilled',
+    });
+
+    // 2. Post ledger entry
+    const ledgerRef = db.collection('ledger').doc();
+    tx.set(ledgerRef, {
+      entryId: ledgerRef.id,
+      kind: 'credits_purchase',
+      userId,
+      amount: creditsAmount,
+      metadata: {
+        paymentIntentId: paymentIntent.id,
+        packId,
+        priceUsd: paymentIntent.amount, // in cents
+        currency: paymentIntent.currency,
+      },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      idempotencyKey,
+    });
+
+    // 3. Update materialized balance
+    const userRef = db.collection('users').doc(userId);
+    tx.set(
+      userRef,
+      {
+        wallet: {
+          credits: admin.firestore.FieldValue.increment(creditsAmount),
+          lifetimePurchased: admin.firestore.FieldValue.increment(creditsAmount),
+        },
+      },
+      { merge: true }
+    );
+
+    // 4. Update paymentIntent record status (if exists)
+    const intentRef = db.collection('paymentIntents').doc(paymentIntent.id);
+    const intentSnap = await tx.get(intentRef);
+    if (intentSnap.exists) {
+      tx.update(intentRef, {
+        status: 'succeeded',
+        fulfilledAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  });
+
+  console.log(`Fulfilled ${creditsAmount} credits for user ${userId} (PaymentIntent: ${paymentIntent.id})`);
+}
+
+/**
+ * Handle payment_intent.payment_failed event
+ * Logs failure for monitoring
+ */
+async function handlePaymentIntentFailed(event: Stripe.Event, eventRef: FirebaseFirestore.DocumentReference) {
+  const paymentIntent = event.data.object as Stripe.PaymentIntent;
+  const userId = paymentIntent.metadata.userId;
+
+  await eventRef.set({
+    eventId: event.id,
+    type: event.type,
+    processedAt: admin.firestore.FieldValue.serverTimestamp(),
+    paymentIntentId: paymentIntent.id,
+    userId,
+    status: 'payment_failed',
+  });
+
+  // Update paymentIntent record if exists
+  const intentRef = db.collection('paymentIntents').doc(paymentIntent.id);
+  const intentSnap = await intentRef.get();
+  if (intentSnap.exists) {
+    await intentRef.update({
+      status: 'failed',
+      failedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  console.log(`Payment failed for user ${userId} (PaymentIntent: ${paymentIntent.id})`);
+}
+
+/**
+ * Handle payment_intent.canceled event
+ * Updates records for monitoring
+ */
+async function handlePaymentIntentCanceled(event: Stripe.Event, eventRef: FirebaseFirestore.DocumentReference) {
+  const paymentIntent = event.data.object as Stripe.PaymentIntent;
+  const userId = paymentIntent.metadata.userId;
+
+  await eventRef.set({
+    eventId: event.id,
+    type: event.type,
+    processedAt: admin.firestore.FieldValue.serverTimestamp(),
+    paymentIntentId: paymentIntent.id,
+    userId,
+    status: 'canceled',
+  });
+
+  // Update paymentIntent record if exists
+  const intentRef = db.collection('paymentIntents').doc(paymentIntent.id);
+  const intentSnap = await intentRef.get();
+  if (intentSnap.exists) {
+    await intentRef.update({
+      status: 'canceled',
+      canceledAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  console.log(`Payment canceled for user ${userId} (PaymentIntent: ${paymentIntent.id})`);
+}
+
+export const stripeWebhook = handleStripeWebhook;
