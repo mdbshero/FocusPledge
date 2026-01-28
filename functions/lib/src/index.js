@@ -36,12 +36,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stripeWebhook = exports.handleStripeWebhook = exports.reconcileIncrementalScheduled = exports.reconcileAllUsers = exports.heartbeatSession = exports.startSession = exports.resolveSession = void 0;
+exports.stripeWebhook = exports.handleStripeWebhook = exports.createCreditsPurchaseIntent = exports.reconcileIncrementalScheduled = exports.reconcileAllUsers = exports.heartbeatSession = exports.startSession = exports.resolveSession = void 0;
 exports.handleResolveSession = handleResolveSession;
 exports.handleStartSession = handleStartSession;
 exports.handleHeartbeatSession = handleHeartbeatSession;
 exports.handleReconcileAllUsers = handleReconcileAllUsers;
 exports.handleReconcileIncremental = handleReconcileIncremental;
+exports.handleCreateCreditsPurchaseIntent = handleCreateCreditsPurchaseIntent;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const stripe_1 = __importDefault(require("stripe"));
@@ -259,6 +260,77 @@ exports.reconcileIncrementalScheduled = functions.pubsub.schedule('every 15 minu
 // ============================================================================
 // STRIPE INTEGRATION
 // ============================================================================
+// Credit packs configuration
+const CREDIT_PACKS = {
+    starter_pack: { credits: 500, priceUsd: 599 },
+    standard_pack: { credits: 1000, priceUsd: 999 },
+    value_pack: { credits: 2500, priceUsd: 1999 },
+    premium_pack: { credits: 5000, priceUsd: 3499 },
+};
+/**
+ * Creates a Stripe PaymentIntent for purchasing credits
+ * Callable function: called from iOS client when user initiates purchase
+ */
+async function handleCreateCreditsPurchaseIntent(data, context) {
+    const packId = data?.packId;
+    const idempotencyKey = data?.idempotencyKey;
+    if (!context.auth?.uid) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be signed in');
+    }
+    if (!packId || !idempotencyKey) {
+        throw new functions.https.HttpsError('invalid-argument', 'packId and idempotencyKey are required');
+    }
+    const pack = CREDIT_PACKS[packId];
+    if (!pack) {
+        throw new functions.https.HttpsError('invalid-argument', `Invalid packId: ${packId}`);
+    }
+    const userId = context.auth.uid;
+    // Check for existing PaymentIntent with this idempotencyKey (client retry protection)
+    const existingIntent = await db
+        .collection('paymentIntents')
+        .where('userId', '==', userId)
+        .where('idempotencyKey', '==', idempotencyKey)
+        .limit(1)
+        .get();
+    if (!existingIntent.empty) {
+        const existing = existingIntent.docs[0].data();
+        console.log(`Returning cached PaymentIntent for idempotencyKey=${idempotencyKey}`);
+        return { client_secret: existing.client_secret };
+    }
+    // Create new Stripe PaymentIntent
+    try {
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: pack.priceUsd,
+            currency: 'usd',
+            metadata: {
+                userId,
+                packId,
+                creditsAmount: pack.credits.toString(),
+                idempotencyKey,
+            },
+            automatic_payment_methods: { enabled: true },
+        });
+        // Store pending purchase record
+        await db.collection('paymentIntents').doc(paymentIntent.id).set({
+            paymentIntentId: paymentIntent.id,
+            userId,
+            packId,
+            creditsAmount: pack.credits,
+            priceUsd: pack.priceUsd,
+            idempotencyKey,
+            status: 'pending',
+            client_secret: paymentIntent.client_secret,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`Created PaymentIntent ${paymentIntent.id} for user ${userId}, pack ${packId}`);
+        return { client_secret: paymentIntent.client_secret };
+    }
+    catch (err) {
+        console.error('Failed to create PaymentIntent:', err);
+        throw new functions.https.HttpsError('internal', 'Failed to create payment intent');
+    }
+}
+exports.createCreditsPurchaseIntent = functions.https.onCall(handleCreateCreditsPurchaseIntent);
 /**
  * Webhook handler for Stripe events
  * Verifies signature and processes payment_intent.succeeded events
