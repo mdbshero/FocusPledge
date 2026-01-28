@@ -17,6 +17,8 @@
 
 ## Recent updates (2026-01-28)
 
+### Earlier today
+
 - Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`.
 - Added a forbidden-terms scanner and CI workflow to fail on gambling-related copy.
 - Cloud Functions (TypeScript) scaffold created; implemented `startSession`, `resolveSession`, and `heartbeatSession` handlers.
@@ -27,15 +29,23 @@
 - Added GitHub Actions workflow to run the Functions emulator tests and a README CI badge.
 - **✅ COMPLETE: Stripe integration specification** with pack SKUs, PaymentIntent flow, webhook handler design, and dual idempotency strategy.
 - Created feature branches for incremental work and opened draft PRs; merged PRs into `main` after review.
-- Branch-protection rules were configured during the workflow; adjusted for single-developer iteration where appropriate.
 
-Progress details:
+### Latest (Evening - Jan 28)
 
-- Tests: emulator integration tests are passing locally (functions tests suite completed successfully).
-- Ledger & balances: ledger is the source-of-truth; materialized `users.wallet.credits` via reconcile job.
-- Repository: CI workflows, forbidden-term scanner, and docs updated to reflect wording guardrails.
+- **✅ COMPLETE: Stripe webhook handler** (`handleStripeWebhook`) with signature verification, dual idempotency (event ID + PaymentIntent ID), and transaction-based fulfillment. Handles `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` events.
+- **✅ COMPLETE: Credits purchase intent** (`createCreditsPurchaseIntent`) callable function with pack configuration (starter/standard/value/premium), client idempotency support, and PaymentIntent storage.
+- **✅ COMPLETE: Scheduled session expiry job** (`expireStaleSessionsScheduled`) that auto-resolves ACTIVE sessions with stale heartbeats (>10min grace period) as FAILURE with `no_heartbeat` reason. Runs every 5 minutes, processes 50 sessions per batch.
+- **All backend core functionality complete**: 21/21 tests passing across session management, Stripe integration, reconciliation, and expiry automation.
 
-These are pragmatic operational steps taken to keep the repo safe and testable while you iterate locally.
+**Backend implementation status:**
+
+- Session lifecycle: ✅ Complete (start/heartbeat/resolve with full idempotency)
+- Stripe integration: ✅ Complete (webhook + purchase intent with dual idempotency)
+- Reconciliation: ✅ Complete (full + incremental paged reconciliation)
+- Scheduled jobs: ✅ Complete (expiry job auto-resolving stale sessions)
+- Tests: ✅ 21/21 passing (11 session tests + 3 Stripe webhook tests + 3 purchase intent validation tests + 4 expiry job tests)
+
+**Next up:** Security rules draft + tests (Sat Feb 7 task), then Flutter UI implementation starting Sun Feb 8.
 
 ## Terminology (Session 1 alignment)
 
@@ -297,51 +307,51 @@ AI can prepare 80–95%, human completes final steps:
 ## 2.5) Daily sessions plan (1–2h/day, starting Sun Jan 25, 2026)
 
 Designed for solo development with AI agent support. Each day is one coherent work session with a concrete output.
-
-| Date       |                           Session (goal) |   Est. | Output (definition of done)                                                   |
-| ---------- | ---------------------------------------: | -----: | ----------------------------------------------------------------------------- |
-| Sun Jan 25 |         ~~Plan alignment + terminology~~ | 1–1.5h | Doc aligned end-to-end to Credits/Ash/Obsidian and skill-first wording        |
-| Mon Jan 26 |        ~~Firestore schema + invariants~~ |   1–2h | Schema section drafted (users/sessions/ledger invariants)                     |
-| Tue Jan 27 |    ~~Settlement spec: `resolveSession`~~ |   1–2h | Idempotent state machine + ledger entry types documented                      |
-| Wed Jan 28 |            ~~Stripe Credits packs spec~~ |   1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented                |
-| Thu Jan 29 |                   iOS native bridge spec |   1–2h | MethodChannel API + App Group keys + polling loop defined                     |
-| Fri Jan 30 |          Flutter UX map + copy checklist |   1–2h | Screen list + UX states + skill-first copy checklist                          |
-| Sat Jan 31 |               Repo scaffolding checklist |   1–2h | Concrete steps to add Firebase/Functions/Stripe deps + local dev flow         |
-| Sun Feb 1  |          ~~Backend: Functions scaffold~~ |   1–2h | Functions project skeleton + lint/test + placeholder callable                 |
-| Mon Feb 2  |         Backend: Stripe webhook skeleton |   1–2h | Verified signature path + event idempotency store stub                        |
-| Tue Feb 3  |        Backend: Credits pack fulfillment |   1–2h | `credits_purchase` ledger posting + wallet crediting stub                     |
-| Wed Feb 4  |     ~~Backend: `startSession` skeleton~~ |   1–2h | Validations + credits lock ledger stub + session doc                          |
-| Thu Feb 5  |   ~~Backend: `resolveSession` skeleton~~ |   1–2h | SUCCESS/FAILURE branches stubbed + idempotency guard                          |
-| Fri Feb 6  |            Backend: scheduler expiry job |   1–2h | Scheduled function skeleton for stale heartbeat resolution                    |
-| Sat Feb 7  |             Security rules draft + tests |   1–2h | Rules draft + rules test harness skeleton                                     |
-| Sun Feb 8  |                Flutter: app architecture |   1–2h | Feature folders + routing + state mgmt baseline                               |
-| Mon Feb 9  |                       Flutter: auth flow |   1–2h | Sign-in screen + Firebase Auth wiring stub                                    |
-| Tue Feb 10 |                   Flutter: wallet screen |   1–2h | Wallet UI (credits/ash/obsidian/votes) reading from Firestore                 |
-| Wed Feb 11 |                  Flutter: buy credits UI |   1–2h | Credits pack picker + call to backend intent (stubbed)                        |
-| Thu Feb 12 |                 Flutter: pledge setup UI |   1–2h | Pledge amount + duration UI + call `startSession`                             |
-| Fri Feb 13 |          Flutter: active session “Pulse” |   1–2h | Timer UI + heartbeat loop + safety copy                                       |
-| Sat Feb 14 |              iOS: MethodChannel scaffold |   1–2h | `requestAuthorization/presentAppPicker/startSession/checkSessionStatus` wired |
-| Sun Feb 15 |                   iOS: App Group storage |   1–2h | Shared keys + read/write utilities + debug viewer                             |
-| Mon Feb 16 |     iOS: DeviceActivity extension target |   1–2h | Extension created + monitoring schedule stub                                  |
-| Tue Feb 17 |              iOS: shielding apply/remove |   1–2h | Basic ManagedSettings shielding toggles during session window                 |
-| Wed Feb 18 |                  iOS: violation flagging |   1–2h | Extension writes `sessionFailed` with reason to App Group                     |
-| Thu Feb 19 | Flutter: native polling + fail reconcile |   1–2h | Poll `checkSessionStatus` + call `resolveSession(FAILURE)`                    |
-| Fri Feb 20 |          Backend: end-to-end settle path |   1–2h | `resolveSession` writes wallet updates + session status transitions           |
-| Sat Feb 21 |              Flutter: completion screens |   1–2h | Success/failure screens + redemption timer display                            |
-| Sun Feb 22 |           Flutter: redemption session UI |   1–2h | Start redemption session + show expiry + results screen                       |
-| Mon Feb 23 |      Backend: redemption session support |   1–2h | `type: REDEMPTION` flow supported in `startSession/resolveSession`            |
-| Tue Feb 24 |         Shop: catalog + inventory schema |   1–2h | Firestore shop catalog/inventory schema + read-only UI                        |
-| Wed Feb 25 |                  Shop: purchase function |   1–2h | Server purchase callable (deduct obsidian, grant cosmetic)                    |
-| Thu Feb 26 |                         Flutter: shop UI |   1–2h | Catalog list + purchase flow wired                                            |
-| Fri Feb 27 |                            Observability |   1–2h | Analytics events + structured logging in functions                            |
-| Sat Feb 28 |              Tests: Functions unit tests |   1–2h | Unit tests for idempotency + core settlement invariants                       |
-| Sun Mar 1  |            Tests: integration happy path |   1–2h | Manual test script + emulator runbook                                         |
-| Mon Mar 2  |           Tests: iOS on-device checklist |   1–2h | Repeatable device test checklist for Screen Time + failure                    |
-| Tue Mar 3  |                    Hardening: edge cases |   1–2h | App kill/background/relaunch reconciliation paths                             |
-| Wed Mar 4  |                 App Store metadata draft |   1–2h | Skill-first description + disclosures draft + privacy checklist               |
-| Thu Mar 5  |                          TestFlight prep |   1–2h | Build settings + versioning + release checklist                               |
-| Fri Mar 6  |           TestFlight upload + smoke test |   1–2h | First TestFlight build uploaded + smoke test checklist                        |
-| Sat Mar 7  |             App Store submission session |   1–2h | Submission checklist complete + “expected questions” answers prepared         |
+✅ Functions project skeleton + lint/test + placeholder callable |
+| Mon Feb 2 | ~~Backend: Stripe webhook handler~~ | 1–2h | ✅ Signature verification + dual idempotency + fulfillment (COMPLETE) |
+| Tue Feb 3 | ~~Backend: Credits purchase intent~~ | 1–2h | ✅ Pack config + PaymentIntent creation + idempotency (COMPLETE) |
+| Wed Feb 4 | ~~Backend: `startSession` skeleton~~ | 1–2h | ✅ Validations + credits lock ledger + session doc (COMPLETE) |
+| Thu Feb 5 | ~~Backend: `resolveSession` skeleton~~ | 1–2h | ✅ SUCCESS/FAILURE branches + full idempotency (COMPLETE) |
+| Fri Feb 6 | ~~Backend: scheduler expiry job~~ | 1–2h | ✅ Auto-resolve stale sessions + batch processing (COMPLETE) |
+| Wed Jan 28 | ~~Stripe Credits packs spec~~ | 1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented |
+| Thu Jan 29 | iOS native bridge spec | 1–2h | MethodChannel API + App Group keys + polling loop defined |
+| Fri Jan 30 | Flutter UX map + copy checklist | 1–2h | Screen list + UX states + skill-first copy checklist |
+| Sat Jan 31 | Repo scaffolding checklist | 1–2h | Concrete steps to add Firebase/Functions/Stripe deps + local dev flow |
+| Sun Feb 1 | ~~Backend: Functions scaffold~~ | 1–2h | Functions project skeleton + lint/test + placeholder callable |
+| Mon Feb 2 | Backend: Stripe webhook skeleton | 1–2h | Verified signature path + event idempotency store stub |
+| Tue Feb 3 | Backend: Credits pack fulfillment | 1–2h | `credits_purchase` ledger posting + wallet crediting stub |
+| Wed Feb 4 | ~~Backend: `startSession` skeleton~~ | 1–2h | Validations + credits lock ledger stub + session doc |
+| Thu Feb 5 | ~~Backend: `resolveSession` skeleton~~ | 1–2h | SUCCESS/FAILURE branches stubbed + idempotency guard |
+| Fri Feb 6 | Backend: scheduler expiry job | 1–2h | Scheduled function skeleton for stale heartbeat resolution |
+| Sat Feb 7 | Security rules draft + tests | 1–2h | Rules draft + rules test harness skeleton |
+| Sun Feb 8 | Flutter: app architecture | 1–2h | Feature folders + routing + state mgmt baseline |
+| Mon Feb 9 | Flutter: auth flow | 1–2h | Sign-in screen + Firebase Auth wiring stub |
+| Tue Feb 10 | Flutter: wallet screen | 1–2h | Wallet UI (credits/ash/obsidian/votes) reading from Firestore |
+| Wed Feb 11 | Flutter: buy credits UI | 1–2h | Credits pack picker + call to backend intent (stubbed) |
+| Thu Feb 12 | Flutter: pledge setup UI | 1–2h | Pledge amount + duration UI + call `startSession` |
+| Fri Feb 13 | Flutter: active session “Pulse” | 1–2h | Timer UI + heartbeat loop + safety copy |
+| Sat Feb 14 | iOS: MethodChannel scaffold | 1–2h | `requestAuthorization/presentAppPicker/startSession/checkSessionStatus` wired |
+| Sun Feb 15 | iOS: App Group storage | 1–2h | Shared keys + read/write utilities + debug viewer |
+| Mon Feb 16 | iOS: DeviceActivity extension target | 1–2h | Extension created + monitoring schedule stub |
+| Tue Feb 17 | iOS: shielding apply/remove | 1–2h | Basic ManagedSettings shielding toggles during session window |
+| Wed Feb 18 | iOS: violation flagging | 1–2h | Extension writes `sessionFailed` with reason to App Group |
+| Thu Feb 19 | Flutter: native polling + fail reconcile | 1–2h | Poll `checkSessionStatus` + call `resolveSession(FAILURE)` |
+| Fri Feb 20 | Backend: end-to-end settle path | 1–2h | `resolveSession` writes wallet updates + session status transitions |
+| Sat Feb 21 | Flutter: completion screens | 1–2h | Success/failure screens + redemption timer display |
+| Sun Feb 22 | Flutter: redemption session UI | 1–2h | Start redemption session + show expiry + results screen |
+| Mon Feb 23 | Backend: redemption session support | 1–2h | `type: REDEMPTION` flow supported in `startSession/resolveSession` |
+| Tue Feb 24 | Shop: catalog + inventory schema | 1–2h | Firestore shop catalog/inventory schema + read-only UI |
+| Wed Feb 25 | Shop: purchase function | 1–2h | Server purchase callable (deduct obsidian, grant cosmetic) |
+| Thu Feb 26 | Flutter: shop UI | 1–2h | Catalog list + purchase flow wired |
+| Fri Feb 27 | Observability | 1–2h | Analytics events + structured logging in functions |
+| Sat Feb 28 | Tests: Functions unit tests | 1–2h | Unit tests for idempotency + core settlement invariants |
+| Sun Mar 1 | Tests: integration happy path | 1–2h | Manual test script + emulator runbook |
+| Mon Mar 2 | Tests: iOS on-device checklist | 1–2h | Repeatable device test checklist for Screen Time + failure |
+| Tue Mar 3 | Hardening: edge cases | 1–2h | App kill/background/relaunch reconciliation paths |
+| Wed Mar 4 | App Store metadata draft | 1–2h | Skill-first description + disclosures draft + privacy checklist |
+| Thu Mar 5 | TestFlight prep | 1–2h | Build settings + versioning + release checklist |
+| Fri Mar 6 | TestFlight upload + smoke test | 1–2h | First TestFlight build uploaded + smoke test checklist |
+| Sat Mar 7 | App Store submission session | 1–2h | Submission checklist complete + “expected questions” answers prepared |
 
 After submission: plan 1–2h/day for review responses and bugfix builds.
 
