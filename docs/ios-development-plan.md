@@ -15,9 +15,11 @@
 
 ---
 
-## Recent updates (2026-01-28)
+## Recent updates
 
-### Earlier today
+### January 28, 2026
+
+**Backend implementation (all complete):**
 
 - Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`.
 - Added a forbidden-terms scanner and CI workflow to fail on gambling-related copy.
@@ -27,15 +29,42 @@
 - Added an incremental reconciliation job (paged) and a full reconcile job that materializes `users.wallet.credits` from `ledger/*`.
 - Wrote extensive Firestore-emulator integration tests (start/heartbeat, resolveSession idempotency, reconcile) and verified locally — **11/11 tests passing**.
 - Added GitHub Actions workflow to run the Functions emulator tests and a README CI badge.
-- **✅ COMPLETE: Stripe integration specification** with pack SKUs, PaymentIntent flow, webhook handler design, and dual idempotency strategy.
-- Created feature branches for incremental work and opened draft PRs; merged PRs into `main` after review.
-
-### Latest (Evening - Jan 28)
-
 - **✅ COMPLETE: Stripe webhook handler** (`handleStripeWebhook`) with signature verification, dual idempotency (event ID + PaymentIntent ID), and transaction-based fulfillment. Handles `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` events.
 - **✅ COMPLETE: Credits purchase intent** (`createCreditsPurchaseIntent`) callable function with pack configuration (starter/standard/value/premium), client idempotency support, and PaymentIntent storage.
 - **✅ COMPLETE: Scheduled session expiry job** (`expireStaleSessionsScheduled`) that auto-resolves ACTIVE sessions with stale heartbeats (>10min grace period) as FAILURE with `no_heartbeat` reason. Runs every 5 minutes, processes 50 sessions per batch.
 - **All backend core functionality complete**: 21/21 tests passing across session management, Stripe integration, reconciliation, and expiry automation.
+
+**Specification documents (all complete):**
+
+- **✅ COMPLETE: Stripe integration specification** with pack SKUs, PaymentIntent flow, webhook handler design, and dual idempotency strategy.
+- **✅ COMPLETE: iOS native bridge specification** with MethodChannel API, App Group configuration, polling mechanism, and state reconciliation patterns.
+- **✅ COMPLETE: Flutter UX specification** with comprehensive screen-by-screen flows, state transitions, and skill-first copy guidelines.
+- **✅ COMPLETE: Repository scaffolding checklist** with step-by-step Firebase setup, dependency management, and local development environment configuration.
+
+### January 29, 2026
+
+**Infrastructure & Architecture:**
+
+- ✅ COMPLETE: Firebase project setup guide with dev/staging/prod environment configuration, secrets management, and deployment instructions
+- ✅ COMPLETE: Flutter app architecture with feature-based folder structure (auth, wallet, session, shop, settings)
+- ✅ COMPLETE: Routing configuration using go_router with authentication guards
+- ✅ COMPLETE: State management setup using Riverpod
+- ✅ COMPLETE: Firebase integration (Auth, Firestore, Functions) with emulator support
+- ✅ COMPLETE: Application theme with skill-first color palette (avoiding gambling aesthetics)
+- ✅ COMPLETE: Core data models (Wallet, Session, SessionStatus, SessionType)
+- ✅ COMPLETE: Placeholder screens for all main features
+
+**Security:**
+
+- ✅ COMPLETE: Firestore Security Rules enforcing server-authoritative economy
+  - Users can read but NOT write wallet balances
+  - Users can read but NOT write ledger entries
+  - Users can read but NOT create sessions directly
+  - Users can only update heartbeat timestamp in sessions
+  - Shop catalog readable by all, writable only by server
+- ✅ COMPLETE: Security Rules test suite (15 test cases covering all collections)
+
+**Next:** Continue with Flutter screen implementations and iOS native bridge development
 
 **Backend implementation status:**
 
@@ -44,6 +73,13 @@
 - Reconciliation: ✅ Complete (full + incremental paged reconciliation)
 - Scheduled jobs: ✅ Complete (expiry job auto-resolving stale sessions)
 - Tests: ✅ 21/21 passing (11 session tests + 3 Stripe webhook tests + 3 purchase intent validation tests + 4 expiry job tests)
+
+**Specification documents status:**
+
+- iOS native bridge spec: ✅ Complete (Jan 28)
+- Flutter UX spec: ✅ Complete (Jan 28)
+- Stripe integration spec: ✅ Complete (Jan 28)
+- Repo scaffolding checklist: ✅ Complete (Jan 28)
 
 **Next up:** Security rules draft + tests (Sat Feb 7 task), then Flutter UI implementation starting Sun Feb 8.
 
@@ -313,18 +349,18 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Wed Feb 4 | ~~Backend: `startSession` skeleton~~ | 1–2h | ✅ Validations + credits lock ledger + session doc (COMPLETE) |
 | Thu Feb 5 | ~~Backend: `resolveSession` skeleton~~ | 1–2h | ✅ SUCCESS/FAILURE branches + full idempotency (COMPLETE) |
 | Fri Feb 6 | ~~Backend: scheduler expiry job~~ | 1–2h | ✅ Auto-resolve stale sessions + batch processing (COMPLETE) |
-| Wed Jan 28 | ~~Stripe Credits packs spec~~ | 1–2h | Pack SKUs + PaymentIntent + webhook + replay safety documented |
-| Thu Jan 29 | iOS native bridge spec | 1–2h | MethodChannel API + App Group keys + polling loop defined |
-| Fri Jan 30 | Flutter UX map + copy checklist | 1–2h | Screen list + UX states + skill-first copy checklist |
-| Sat Jan 31 | Repo scaffolding checklist | 1–2h | Concrete steps to add Firebase/Functions/Stripe deps + local dev flow |
+| Wed Jan 28 | ~~Stripe Credits packs spec~~ | 1–2h | ✅ Pack SKUs + PaymentIntent + webhook + replay safety documented (COMPLETE) |
+| Thu Jan 29 | ~~iOS native bridge spec~~ | 1–2h | ✅ MethodChannel API + App Group keys + polling loop defined (COMPLETE) |
+| Fri Jan 30 | ~~Flutter UX map + copy checklist~~ | 1–2h | ✅ Screen list + UX states + skill-first copy checklist (COMPLETE) |
+| Sat Jan 31 | ~~Repo scaffolding checklist~~ | 1–2h | ✅ Concrete steps to add Firebase/Functions/Stripe deps + local dev flow (COMPLETE) |
 | Sun Feb 1 | ~~Backend: Functions scaffold~~ | 1–2h | Functions project skeleton + lint/test + placeholder callable |
 | Mon Feb 2 | Backend: Stripe webhook skeleton | 1–2h | Verified signature path + event idempotency store stub |
 | Tue Feb 3 | Backend: Credits pack fulfillment | 1–2h | `credits_purchase` ledger posting + wallet crediting stub |
 | Wed Feb 4 | ~~Backend: `startSession` skeleton~~ | 1–2h | Validations + credits lock ledger stub + session doc |
 | Thu Feb 5 | ~~Backend: `resolveSession` skeleton~~ | 1–2h | SUCCESS/FAILURE branches stubbed + idempotency guard |
 | Fri Feb 6 | Backend: scheduler expiry job | 1–2h | Scheduled function skeleton for stale heartbeat resolution |
-| Sat Feb 7 | Security rules draft + tests | 1–2h | Rules draft + rules test harness skeleton |
-| Sun Feb 8 | Flutter: app architecture | 1–2h | Feature folders + routing + state mgmt baseline |
+| Sat Feb 7 | ~~Security rules draft + tests~~ | 1–2h | ✅ Rules draft + comprehensive test suite (COMPLETE Jan 29) |
+| Sun Feb 8 | ~~Flutter: app architecture~~ | 1–2h | ✅ Feature folders + routing + state mgmt baseline (COMPLETE Jan 29) |
 | Mon Feb 9 | Flutter: auth flow | 1–2h | Sign-in screen + Firebase Auth wiring stub |
 | Tue Feb 10 | Flutter: wallet screen | 1–2h | Wallet UI (credits/ash/obsidian/votes) reading from Firestore |
 | Wed Feb 11 | Flutter: buy credits UI | 1–2h | Credits pack picker + call to backend intent (stubbed) |

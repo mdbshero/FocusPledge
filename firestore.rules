@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isServerRequest() {
+      // Cloud Functions have admin privileges
+      return request.auth.token.firebase.sign_in_provider == 'custom';
+    }
+
+    // ==================================================================
+    // USERS COLLECTION
+    // ==================================================================
+    match /users/{userId} {
+      // Users can read their own document
+      allow read: if isOwner(userId);
+      
+      // Users can create their own document (initial setup)
+      allow create: if isOwner(userId) 
+        && request.resource.data.uid == userId
+        && request.resource.data.wallet.credits == 0
+        && request.resource.data.wallet.ash == 0
+        && request.resource.data.wallet.obsidian == 0
+        && request.resource.data.wallet.purgatoryVotes == 0;
+      
+      // CRITICAL: Users CANNOT update wallet balances
+      // Only Cloud Functions can modify wallet fields
+      allow update: if isOwner(userId) 
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['wallet', 'deadlines']);
+      
+      // Users cannot delete their account (use Cloud Function for GDPR compliance)
+      allow delete: if false;
+    }
+
+    // ==================================================================
+    // SESSIONS COLLECTION
+    // ==================================================================
+    match /sessions/{sessionId} {
+      // Users can read their own sessions
+      allow read: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Users CANNOT create sessions directly (must use startSession callable)
+      allow create: if false;
+      
+      // Users can update native.lastCheckedAt for heartbeat ONLY
+      // All other fields are server-only
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['native'])
+        && request.resource.data.native.diff(resource.data.native).affectedKeys()
+          .hasOnly(['lastCheckedAt']);
+      
+      // Users cannot delete sessions
+      allow delete: if false;
+    }
+
+    // ==================================================================
+    // LEDGER COLLECTION (Immutable Event Store)
+    // ==================================================================
+    match /ledger/{entryId} {
+      // Users can read their own ledger entries
+      allow read: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Users CANNOT write to ledger (server-only)
+      allow create, update, delete: if false;
+    }
+
+    // ==================================================================
+    // STRIPE EVENTS (Idempotency Store)
+    // ==================================================================
+    match /stripeEvents/{eventId} {
+      // Nobody reads these directly
+      allow read: if false;
+      
+      // Server-only writes
+      allow create, update, delete: if false;
+    }
+
+    // ==================================================================
+    // SHOP CATALOG (Read-only for clients)
+    // ==================================================================
+    match /shop/catalog/{itemId} {
+      // Everyone can read catalog
+      allow read: if true;
+      
+      // Only admins can modify catalog
+      allow create, update, delete: if false;
+    }
+
+    // ==================================================================
+    // SHOP PURCHASES (User Inventory)
+    // ==================================================================
+    match /shop/purchases/{purchaseId} {
+      // Users can read their own purchases
+      allow read: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Users CANNOT create purchases (must use purchaseItem callable)
+      allow create, update, delete: if false;
+    }
+
+    // ==================================================================
+    // DEFAULT DENY (Security by default)
+    // ==================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
