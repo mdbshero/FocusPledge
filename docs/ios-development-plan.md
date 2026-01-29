@@ -366,7 +366,7 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Wed Feb 11 | ~~Flutter: buy credits UI~~ | 1–2h | ✅ Credits pack picker (4 tiers) + Stripe backend stub (COMPLETE Jan 29) |
 | Thu Feb 12 | ~~Flutter: pledge setup UI~~ | 1–2h | ✅ Pledge amount/duration selection + startSession stub (COMPLETE Jan 29) |
 | Fri Feb 13 | ~~Flutter: active session "Pulse"~~ | 1–2h | ✅ Countdown timer + completion screens + state streaming (COMPLETE Jan 29) |
-| Sat Feb 14 | iOS: MethodChannel scaffold | 1–2h | `requestAuthorization/presentAppPicker/startSession/checkSessionStatus` wired |
+| Sat Feb 14 | ~~iOS: MethodChannel scaffold~~ | 1–2h | ✅ 7 methods wired (auth/picker/start/stop/check/status/debug) + App Group config (COMPLETE Jan 29) |
 | Sun Feb 15 | iOS: App Group storage | 1–2h | Shared keys + read/write utilities + debug viewer |
 | Mon Feb 16 | iOS: DeviceActivity extension target | 1–2h | Extension created + monitoring schedule stub |
 | Tue Feb 17 | iOS: shielding apply/remove | 1–2h | Basic ManagedSettings shielding toggles during session window |
