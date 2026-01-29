@@ -1,33 +1,33 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import '../../../models/session.dart';
 import '../../../services/firebase_service.dart';
 
 /// Provider for active session data
-final activeSessionProvider = StreamProvider.family<Session?, String>((ref, sessionId) {
+final activeSessionProvider = StreamProvider.family<Session?, String>((
+  ref,
+  sessionId,
+) {
   return FirebaseService.firestore
       .collection('sessions')
       .doc(sessionId)
       .snapshots()
       .map((doc) {
-    if (!doc.exists) return null;
-    return Session.fromFirestore(doc);
-  });
+        if (!doc.exists) return null;
+        return Session.fromFirestore(doc);
+      });
 });
 
 class ActiveSessionScreen extends ConsumerStatefulWidget {
   final String sessionId;
 
-  const ActiveSessionScreen({
-    super.key,
-    required this.sessionId,
-  });
+  const ActiveSessionScreen({super.key, required this.sessionId});
 
   @override
-  ConsumerState<ActiveSessionScreen> createState() => _ActiveSessionScreenState();
+  ConsumerState<ActiveSessionScreen> createState() =>
+      _ActiveSessionScreenState();
 }
 
 class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
@@ -103,7 +103,11 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.warning_amber, size: 64, color: Colors.orange),
+                  const Icon(
+                    Icons.warning_amber,
+                    size: 64,
+                    color: Colors.orange,
+                  ),
                   const SizedBox(height: 16),
                   const Text('Session not found'),
                   const SizedBox(height: 16),
@@ -130,7 +134,8 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
 
           // Active session "Pulse" view
           final remaining = _remainingTime ?? session.remainingTime;
-          final progress = 1.0 - (remaining.inSeconds / (session.durationMinutes * 60));
+          final progress =
+              1.0 - (remaining.inSeconds / (session.durationMinutes * 60));
 
           return SafeArea(
             child: Padding(
@@ -162,14 +167,18 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                             _formatDuration(remaining),
                             style: theme.textTheme.displayLarge?.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontFeatures: [const FontFeature.tabularFigures()],
+                              fontFeatures: [
+                                const FontFeature.tabularFigures(),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'remaining',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.6,
+                              ),
                             ),
                           ),
                         ],
@@ -191,7 +200,8 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                               Text(
                                 'Pledged',
                                 style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.7),
                                 ),
                               ),
                               Text(
@@ -231,7 +241,9 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                           child: Text(
                             'Distractions are blocked. Opening blocked apps will end this session in failure.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.8),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.8,
+                              ),
                             ),
                           ),
                         ),
@@ -340,11 +352,7 @@ class _ResultRow extends StatelessWidget {
   final String value;
   final Color? valueColor;
 
-  const _ResultRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _ResultRow({required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {

@@ -53,7 +53,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -97,9 +97,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(
-                      color: theme.colorScheme.onErrorContainer,
-                    ),
+                    style: TextStyle(color: theme.colorScheme.onErrorContainer),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -148,9 +146,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               if (_isLoading)
                 const Padding(
                   padding: EdgeInsets.only(top: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
 
               const Spacer(),

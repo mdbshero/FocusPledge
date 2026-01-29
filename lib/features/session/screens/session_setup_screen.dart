@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../providers/wallet_provider.dart';
-import '../../../services/firebase_service.dart';
 
 class SessionSetupScreen extends ConsumerStatefulWidget {
   const SessionSetupScreen({super.key});
@@ -58,9 +56,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     final walletAsync = ref.watch(walletProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Start Pledge Session'),
-      ),
+      appBar: AppBar(title: const Text('Start Pledge Session')),
       body: walletAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Error: $error')),
@@ -100,7 +96,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                         Text(
                           'Lock credits and stay focused for the selected duration. Screen Time will block distractions.',
                           style: TextStyle(
-                            color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                            color: theme.colorScheme.onPrimaryContainer
+                                .withOpacity(0.8),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -162,7 +159,9 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                   value: _pledgeAmount.toDouble(),
                   min: 100,
                   max: wallet.credits.toDouble().clamp(100, 5000),
-                  divisions: ((wallet.credits.toDouble().clamp(100, 5000) - 100) / 50).round(),
+                  divisions:
+                      ((wallet.credits.toDouble().clamp(100, 5000) - 100) / 50)
+                          .round(),
                   label: '$_pledgeAmount FC',
                   onChanged: (value) {
                     setState(() => _pledgeAmount = value.round());
@@ -220,14 +219,16 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                           icon: Icons.check_circle_outline,
                           color: Colors.green,
                           title: 'Success',
-                          description: 'Credits returned + Impact Points earned',
+                          description:
+                              'Credits returned + Impact Points earned',
                         ),
                         const SizedBox(height: 8),
                         _OutcomeRow(
                           icon: Icons.cancel_outlined,
                           color: Colors.red,
                           title: 'Failure',
-                          description: 'Credits → Ash, Votes frozen, 24h redemption window',
+                          description:
+                              'Credits → Ash, Votes frozen, 24h redemption window',
                         ),
                       ],
                     ),

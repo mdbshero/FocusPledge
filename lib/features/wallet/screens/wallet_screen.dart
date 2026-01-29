@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../providers/wallet_provider.dart';
-import '../../../providers/auth_provider.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -56,12 +55,12 @@ class WalletScreen extends ConsumerWidget {
                     error: (_, __) => const SizedBox.shrink(),
                     data: (expiry) {
                       if (expiry == null) return const SizedBox.shrink();
-                      
+
                       final now = DateTime.now();
                       if (now.isAfter(expiry)) return const SizedBox.shrink();
-                      
+
                       final remaining = expiry.difference(now);
-                      
+
                       return Container(
                         padding: const EdgeInsets.all(16),
                         margin: const EdgeInsets.only(bottom: 16),
@@ -166,7 +165,7 @@ class WalletScreen extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),
-                  
+
                   if (wallet.credits < 100)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -302,10 +301,7 @@ class _StatRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatRow({
-    required this.label,
-    required this.value,
-  });
+  const _StatRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

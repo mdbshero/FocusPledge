@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 /// Credits pack configurations
 enum CreditsPack {
@@ -16,9 +15,9 @@ enum CreditsPack {
   const CreditsPack(this.credits, this.priceUsd, this.name);
 
   String get description => '$credits Focus Credits';
-  
+
   double get creditsPerDollar => credits / priceUsd;
-  
+
   String get bonus {
     if (this == CreditsPack.starter) return '';
     final baseRate = CreditsPack.starter.creditsPerDollar;
@@ -54,9 +53,9 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
       //   'packId': pack.name.toLowerCase().replaceAll(' ', '_'),
       //   'idempotencyKey': 'mobile_${DateTime.now().millisecondsSinceEpoch}',
       // });
-      // 
+      //
       // final clientSecret = result.data['clientSecret'];
-      // 
+      //
       // // Present Stripe payment sheet (requires stripe_flutter package)
       // await presentPaymentSheet(clientSecret);
 
@@ -77,9 +76,7 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Buy Focus Credits'),
-      ),
+      appBar: AppBar(title: const Text('Buy Focus Credits')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -109,7 +106,9 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
                     Text(
                       'Commit credits to pledge sessions. Build discipline, earn rewards.',
                       style: TextStyle(
-                        color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                        color: theme.colorScheme.onPrimaryContainer.withOpacity(
+                          0.8,
+                        ),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -130,20 +129,20 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
                 ),
                 child: Text(
                   _errorMessage!,
-                  style: TextStyle(
-                    color: theme.colorScheme.onErrorContainer,
-                  ),
+                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
                   textAlign: TextAlign.center,
                 ),
               ),
 
             // Packs
-            ...CreditsPack.values.map((pack) => _PackCard(
-              pack: pack,
-              isSelected: _selectedPack == pack,
-              onTap: () => setState(() => _selectedPack = pack),
-            )),
-            
+            ...CreditsPack.values.map(
+              (pack) => _PackCard(
+                pack: pack,
+                isSelected: _selectedPack == pack,
+                onTap: () => setState(() => _selectedPack = pack),
+              ),
+            ),
+
             const SizedBox(height: 24),
 
             // Purchase Button
@@ -342,10 +341,7 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _InfoRow({
-    required this.icon,
-    required this.text,
-  });
+  const _InfoRow({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -361,12 +357,7 @@ class _InfoRow extends StatelessWidget {
             color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
+          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
         ],
       ),
     );
