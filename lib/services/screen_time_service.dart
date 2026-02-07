@@ -2,7 +2,9 @@ import 'package:flutter/services.dart';
 
 /// Service for communicating with iOS Screen Time APIs via MethodChannel
 class ScreenTimeService {
-  static const MethodChannel _channel = MethodChannel('com.focuspledge/screen_time');
+  static const MethodChannel _channel = MethodChannel(
+    'com.focuspledge/screen_time',
+  );
 
   /// Request Screen Time authorization from the user
   /// Returns true if authorized, false otherwise
@@ -20,7 +22,9 @@ class ScreenTimeService {
   /// Returns authorization status as a string: 'approved', 'denied', or 'notDetermined'
   Future<String> getAuthorizationStatus() async {
     try {
-      final String status = await _channel.invokeMethod('getAuthorizationStatus');
+      final String status = await _channel.invokeMethod(
+        'getAuthorizationStatus',
+      );
       return status;
     } on PlatformException catch (e) {
       print('Error getting authorization status: ${e.message}');
@@ -89,7 +93,7 @@ class ScreenTimeService {
         'checkSessionStatus',
         {'sessionId': sessionId},
       );
-      
+
       return {
         'isActive': result['isActive'] as bool? ?? false,
         'failed': result['failed'] as bool? ?? false,
@@ -97,11 +101,7 @@ class ScreenTimeService {
       };
     } on PlatformException catch (e) {
       print('Error checking session status: ${e.message}');
-      return {
-        'isActive': false,
-        'failed': false,
-        'reason': null,
-      };
+      return {'isActive': false, 'failed': false, 'reason': null};
     }
   }
 
@@ -109,7 +109,9 @@ class ScreenTimeService {
   /// Returns a map with app group data
   Future<Map<String, dynamic>> getAppGroupState() async {
     try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod('getAppGroupState');
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getAppGroupState',
+      );
       return Map<String, dynamic>.from(result);
     } on PlatformException catch (e) {
       print('Error getting app group state: ${e.message}');

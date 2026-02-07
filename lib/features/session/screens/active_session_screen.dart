@@ -154,7 +154,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                         child: CircularProgressIndicator(
                           value: progress,
                           strokeWidth: 12,
-                          backgroundColor: theme.colorScheme.surfaceVariant,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             theme.colorScheme.primary,
                           ),
