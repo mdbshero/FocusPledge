@@ -11,8 +11,14 @@ functions/node_modules/
 
 # Build outputs
 build/
+functions/lib/
 ios/Flutter/Flutter.framework
 macos/Flutter/Flutter.framework
+
+# Firebase emulator logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # IDE
 .vscode/
