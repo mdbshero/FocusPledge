@@ -11,11 +11,6 @@ class FirebaseService {
 
   /// Initialize Firebase with appropriate configuration
   static Future<void> initialize() async {
-    // TODO: Add firebase_options.dart configuration
-    await Firebase.initializeApp(
-      // options: DefaultFirebaseOptions.currentPlatform,
-    );
-
     // Configure emulator for local development
     const useEmulator = bool.fromEnvironment(
       'USE_EMULATOR',
@@ -23,7 +18,22 @@ class FirebaseService {
     );
 
     if (useEmulator) {
+      // For emulator, initialize with fake project
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'fake-api-key',
+          appId: '1:123456789:web:abcdef',
+          messagingSenderId: '123456789',
+          projectId: 'demo-focuspledge',
+        ),
+      );
       await _configureEmulators();
+    } else {
+      // For production, use firebase_options.dart
+      // TODO: Generate with `flutterfire configure`
+      await Firebase.initializeApp(
+        // options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
   }
 

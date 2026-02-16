@@ -5,10 +5,16 @@ import 'services/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
-  await FirebaseService.initialize();
-  
+
+  try {
+    // Initialize Firebase
+    await FirebaseService.initialize();
+    debugPrint('✅ Firebase initialized successfully');
+  } catch (e, stackTrace) {
+    debugPrint('❌ Firebase initialization error: $e');
+    debugPrint('Stack trace: $stackTrace');
+  }
+
   runApp(
     const ProviderScope(
       child: FocusPledgeApp(),
