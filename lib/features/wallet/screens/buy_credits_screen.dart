@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../services/backend_service.dart';
 
 /// Credits pack configurations
 enum CreditsPack {
@@ -45,27 +46,34 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
     });
 
     try {
-      // TODO: Call Cloud Function to create Stripe PaymentIntent
-      // final functions = FirebaseService.functions;
-      // final result = await functions
-      //     .httpsCallable('createCreditsPurchaseIntent')
-      //     .call({
-      //   'packId': pack.name.toLowerCase().replaceAll(' ', '_'),
-      //   'idempotencyKey': 'mobile_${DateTime.now().millisecondsSinceEpoch}',
-      // });
-      //
-      // final clientSecret = result.data['clientSecret'];
-      //
-      // // Present Stripe payment sheet (requires stripe_flutter package)
-      // await presentPaymentSheet(clientSecret);
+      // Call Cloud Function to create Stripe PaymentIntent
+      final packId = pack.name.toLowerCase().replaceAll(' ', '_');
+      final result = await BackendService.createCreditsPurchaseIntent(
+        packId: packId,
+        idempotencyKey: 'mobile_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      final clientSecret = result['clientSecret'] as String;
+
+      // TODO: Present Stripe payment sheet (requires flutter_stripe package)
+      // For now, show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Payment intent created! Client secret: ${clientSecret.substring(0, 20)}...',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
 
       setState(() {
-        _errorMessage = 'Payment integration coming soon';
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'Purchase failed: ${e.toString()}';
         _isLoading = false;
       });
     }

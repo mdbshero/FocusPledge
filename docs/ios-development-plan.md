@@ -64,7 +64,33 @@
   - Shop catalog readable by all, writable only by server
 - ✅ COMPLETE: Security Rules test suite (15 test cases covering all collections)
 
-**Next:** Continue with Flutter screen implementations and iOS native bridge development
+### February 9-14, 2026
+
+**Flutter UI Implementation (Phase 1 - Feb 9-13):**
+
+- ✅ COMPLETE: Authentication flow with Apple Sign-In + anonymous auth support
+- ✅ COMPLETE: Wallet screen with live Firestore streaming, balance display (Credits/Ash/Obsidian/Frozen Votes), and redemption deadline warnings
+- ✅ COMPLETE: Buy Credits UI with 4-tier pack picker (Starter/Standard/Value/Premium) and Stripe payment integration stub
+- ✅ COMPLETE: Pledge setup screen with amount/duration selection and validation
+- ✅ COMPLETE: Active session "Pulse" screen with countdown timer, heartbeat mechanism, and completion flow
+- ✅ COMPLETE: Session state streaming and real-time updates from Firestore
+- ✅ COMPLETE: TypeScript type fixes in Cloud Functions
+
+**iOS Native Bridge (Phase 1 - Feb 14):**
+
+- ✅ COMPLETE: MethodChannel scaffold with 7 core methods implemented:
+  - `requestAuthorization()` - Screen Time permission flow
+  - `getAuthorizationStatus()` - Check current permission state
+  - `presentAppPicker()` - FamilyActivityPicker for app selection
+  - `startSession(sessionId, durationMinutes)` - Initialize monitoring
+  - `stopSession(sessionId)` - Stop monitoring and remove shields
+  - `checkSessionStatus(sessionId)` - Poll for violation flags
+  - `getAppGroupState()` - Debug utility for shared storage
+- ✅ COMPLETE: App Group configuration (`group.com.focuspledge.shared`) for data sharing between app and extensions
+- ✅ COMPLETE: Platform availability guards (@available checks) for iOS 16+ Screen Time APIs
+- ✅ COMPLETE: iOS compilation fixes and Dart code formatting
+
+**Next:** iOS DeviceActivity extension target creation and ManagedSettings shielding implementation
 
 **Backend implementation status:**
 
@@ -361,12 +387,12 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Fri Feb 6 | ~~Backend: scheduler expiry job~~ | 1–2h | ✅ Auto-resolve stale sessions + batch processing (COMPLETE Jan 28) |
 | Sat Feb 7 | ~~Security rules draft + tests~~ | 1–2h | ✅ Rules draft + comprehensive test suite (COMPLETE Jan 29) |
 | Sun Feb 8 | ~~Flutter: app architecture~~ | 1–2h | ✅ Feature folders + routing + state mgmt baseline (COMPLETE Jan 29) |
-| Mon Feb 9 | ~~Flutter: auth flow~~ | 1–2h | ✅ Sign-in screen with Apple Sign-In + anonymous auth (COMPLETE Jan 29) |
-| Tue Feb 10 | ~~Flutter: wallet screen~~ | 1–2h | ✅ Full wallet UI with live Firestore streaming + redemption warnings (COMPLETE Jan 29) |
-| Wed Feb 11 | ~~Flutter: buy credits UI~~ | 1–2h | ✅ Credits pack picker (4 tiers) + Stripe backend stub (COMPLETE Jan 29) |
-| Thu Feb 12 | ~~Flutter: pledge setup UI~~ | 1–2h | ✅ Pledge amount/duration selection + startSession stub (COMPLETE Jan 29) |
-| Fri Feb 13 | ~~Flutter: active session "Pulse"~~ | 1–2h | ✅ Countdown timer + completion screens + state streaming (COMPLETE Jan 29) |
-| Sat Feb 14 | ~~iOS: MethodChannel scaffold~~ | 1–2h | ✅ 7 methods wired (auth/picker/start/stop/check/status/debug) + App Group config (COMPLETE Jan 29) |
+| Mon Feb 9 | ~~Flutter: auth flow~~ | 1–2h | ✅ Sign-in screen with Apple Sign-In + anonymous auth (COMPLETE Feb 9-13) |
+| Tue Feb 10 | ~~Flutter: wallet screen~~ | 1–2h | ✅ Full wallet UI with live Firestore streaming + redemption warnings (COMPLETE Feb 9-13) |
+| Wed Feb 11 | ~~Flutter: buy credits UI~~ | 1–2h | ✅ Credits pack picker (4 tiers) + Stripe backend stub (COMPLETE Feb 9-13) |
+| Thu Feb 12 | ~~Flutter: pledge setup UI~~ | 1–2h | ✅ Pledge amount/duration selection + startSession stub (COMPLETE Feb 9-13) |
+| Fri Feb 13 | ~~Flutter: active session "Pulse"~~ | 1–2h | ✅ Countdown timer + completion screens + state streaming (COMPLETE Feb 9-13) |
+| Sat Feb 14 | ~~iOS: MethodChannel scaffold~~ | 1–2h | ✅ 7 methods wired (auth/picker/start/stop/check/status/debug) + App Group config (COMPLETE Feb 14) |
 | Sun Feb 15 | iOS: App Group storage | 1–2h | Shared keys + read/write utilities + debug viewer |
 | Mon Feb 16 | iOS: DeviceActivity extension target | 1–2h | Extension created + monitoring schedule stub |
 | Tue Feb 17 | iOS: shielding apply/remove | 1–2h | Basic ManagedSettings shielding toggles during session window |

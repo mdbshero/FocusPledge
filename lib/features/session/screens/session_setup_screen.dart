@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../providers/wallet_provider.dart';
+import '../../../services/backend_service.dart';
 
 class SessionSetupScreen extends ConsumerStatefulWidget {
   const SessionSetupScreen({super.key});
@@ -25,26 +27,20 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     });
 
     try {
-      // TODO: Call Cloud Function startSession
-      // final functions = FirebaseService.functions;
-      // final result = await functions
-      //     .httpsCallable('handleStartSession')
-      //     .call({
-      //   'pledgeAmount': _pledgeAmount,
-      //   'durationMinutes': _durationMinutes,
-      //   'idempotencyKey': 'mobile_${DateTime.now().millisecondsSinceEpoch}',
-      // });
-      //
-      // final sessionId = result.data['sessionId'];
-      // context.go('/session/active/$sessionId');
+      // Call Cloud Function startSession
+      final sessionId = await BackendService.startSession(
+        pledgeAmount: _pledgeAmount,
+        durationMinutes: _durationMinutes,
+        idempotencyKey: 'mobile_${DateTime.now().millisecondsSinceEpoch}',
+      );
 
-      setState(() {
-        _errorMessage = 'Session creation coming soon - backend ready!';
-        _isLoading = false;
-      });
+      // Navigate to active session screen
+      if (mounted) {
+        context.go('/session/active/$sessionId');
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'Failed to start session: ${e.toString()}';
         _isLoading = false;
       });
     }

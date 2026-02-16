@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../models/session.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/backend_service.dart';
 
 /// Provider for active session data
 final activeSessionProvider = StreamProvider.family<Session?, String>((
@@ -32,12 +33,33 @@ class ActiveSessionScreen extends ConsumerStatefulWidget {
 
 class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
   Timer? _timer;
+  Timer? _heartbeatTimer;
   Duration? _remainingTime;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start heartbeat timer (send every 30 seconds)
+    _heartbeatTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _sendHeartbeat(),
+    );
+  }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _heartbeatTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _sendHeartbeat() async {
+    try {
+      await BackendService.heartbeatSession(sessionId: widget.sessionId);
+    } catch (e) {
+      // Silently fail - backend scheduler will handle missing heartbeats
+      debugPrint('Heartbeat failed: $e');
+    }
   }
 
   void _startTimer(Session session) {
@@ -154,7 +176,8 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                         child: CircularProgressIndicator(
                           value: progress,
                           strokeWidth: 12,
-                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             theme.colorScheme.primary,
                           ),
