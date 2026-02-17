@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00F8B97C2AA89AB945842DD1 /* ScreenTimeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26795C7B802CEAA76AA27A56 /* ScreenTimeBridge.swift */; };
+		A1C2D3E4F5A6B7C8D9E0F1A2 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D3E4F5A6B7C8D9E0F1A2B3 /* AppGroupStorage.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		2526440CCBD05F5F7FA30B7D /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 13D2311AEF277FC0F4E401EB /* Pods_Runner.framework */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
@@ -18,6 +19,9 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		CF6C1495775B61DA78E9EFAC /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ED732734F692FFA84F82CDD0 /* Pods_RunnerTests.framework */; };
 		F2E1D0C9B8A7F6E5D4C3B2A1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* GoogleService-Info.plist */; };
+		DA01A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA11A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitorExtension.swift */; };
+		DA02A1B2C3D4E5F6A7B8C9D0 /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA12A1B2C3D4E5F6A7B8C9D0 /* AppGroupStorage.swift */; };
+		DA03A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = DA20A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,6 +31,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		DA04A1B2C3D4E5F6A7B8C9D0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA30A1B2C3D4E5F6A7B8C9D0;
+			remoteInfo = FocusPledgeMonitor;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -41,6 +52,17 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DA05A1B2C3D4E5F6A7B8C9D0 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DA03A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +71,7 @@
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		26795C7B802CEAA76AA27A56 /* ScreenTimeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenTimeBridge.swift; sourceTree = "<group>"; };
+		B2D3E4F5A6B7C8D9E0F1A2B3 /* AppGroupStorage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppGroupStorage.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
@@ -69,6 +92,11 @@
 		ED732734F692FFA84F82CDD0 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FDB86194AA3C7F2239D32F5D /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		DA11A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPledgeMonitorExtension.swift; sourceTree = "<group>"; };
+		DA12A1B2C3D4E5F6A7B8C9D0 /* AppGroupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStorage.swift; sourceTree = "<group>"; };
+		DA13A1B2C3D4E5F6A7B8C9D0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DA14A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FocusPledgeMonitor.entitlements; sourceTree = "<group>"; };
+		DA20A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusPledgeMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +154,7 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				DA15A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor */,
 				F83797F950B2695C4CEBDCEA /* Pods */,
 				21110AB9BE9ACDAB1907B254 /* Frameworks */,
 			);
@@ -136,6 +165,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				DA20A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -153,8 +183,20 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				26795C7B802CEAA76AA27A56 /* ScreenTimeBridge.swift */,
+				B2D3E4F5A6B7C8D9E0F1A2B3 /* AppGroupStorage.swift */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		DA15A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor */ = {
+			isa = PBXGroup;
+			children = (
+				DA11A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitorExtension.swift */,
+				DA12A1B2C3D4E5F6A7B8C9D0 /* AppGroupStorage.swift */,
+				DA13A1B2C3D4E5F6A7B8C9D0 /* Info.plist */,
+				DA14A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.entitlements */,
+			);
+			path = FocusPledgeMonitor;
 			sourceTree = "<group>";
 		};
 		F83797F950B2695C4CEBDCEA /* Pods */ = {
@@ -203,17 +245,35 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				DA05A1B2C3D4E5F6A7B8C9D0 /* Embed App Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				2F8FFBB3502CF733A44F78F8 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				DA06A1B2C3D4E5F6A7B8C9D0 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		DA30A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA40A1B2C3D4E5F6A7B8C9D0 /* Build configuration list for PBXNativeTarget "FocusPledgeMonitor" */;
+			buildPhases = (
+				DA31A1B2C3D4E5F6A7B8C9D0 /* Sources */,
+				DA32A1B2C3D4E5F6A7B8C9D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FocusPledgeMonitor;
+			productName = FocusPledgeMonitor;
+			productReference = DA20A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -233,6 +293,9 @@
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
 					};
+					DA30A1B2C3D4E5F6A7B8C9D0 = {
+						CreatedOnToolsVersion = 15.0;
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -250,6 +313,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				DA30A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor */,
 			);
 		};
 /* End PBXProject section */
@@ -271,6 +335,13 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				F2E1D0C9B8A7F6E5D4C3B2A1 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA32A1B2C3D4E5F6A7B8C9D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,6 +458,16 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				00F8B97C2AA89AB945842DD1 /* ScreenTimeBridge.swift in Sources */,
+				A1C2D3E4F5A6B7C8D9E0F1A2 /* AppGroupStorage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA31A1B2C3D4E5F6A7B8C9D0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA01A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitorExtension.swift in Sources */,
+				DA02A1B2C3D4E5F6A7B8C9D0 /* AppGroupStorage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,6 +478,11 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		DA06A1B2C3D4E5F6A7B8C9D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA30A1B2C3D4E5F6A7B8C9D0 /* FocusPledgeMonitor */;
+			targetProxy = DA04A1B2C3D4E5F6A7B8C9D0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -478,6 +564,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 74S95ZD486;
 				ENABLE_BITCODE = NO;
@@ -666,6 +753,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 74S95ZD486;
 				ENABLE_BITCODE = NO;
@@ -694,6 +782,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 74S95ZD486;
 				ENABLE_BITCODE = NO;
@@ -714,6 +803,92 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
+		};
+		DA41A1B2C3D4E5F6A7B8C9D0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FocusPledgeMonitor/FocusPledgeMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 74S95ZD486;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusPledgeMonitor/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FocusPledge Monitor";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.focusPledge.FocusPledgeMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		DA42A1B2C3D4E5F6A7B8C9D0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FocusPledgeMonitor/FocusPledgeMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 74S95ZD486;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusPledgeMonitor/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FocusPledge Monitor";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.focusPledge.FocusPledgeMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		DA43A1B2C3D4E5F6A7B8C9D0 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FocusPledgeMonitor/FocusPledgeMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 74S95ZD486;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusPledgeMonitor/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FocusPledge Monitor";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.focusPledge.FocusPledgeMonitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Profile;
 		};
 /* End XCBuildConfiguration section */
 
@@ -744,6 +919,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA40A1B2C3D4E5F6A7B8C9D0 /* Build configuration list for PBXNativeTarget "FocusPledgeMonitor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA41A1B2C3D4E5F6A7B8C9D0 /* Debug */,
+				DA42A1B2C3D4E5F6A7B8C9D0 /* Release */,
+				DA43A1B2C3D4E5F6A7B8C9D0 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -289,10 +289,13 @@ class _PackCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          pack.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            pack.name,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (pack.bonus.isNotEmpty) ...[

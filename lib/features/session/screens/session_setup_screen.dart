@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../providers/wallet_provider.dart';
 import '../../../services/backend_service.dart';
+import '../../../services/screen_time_service.dart';
 
 class SessionSetupScreen extends ConsumerStatefulWidget {
   const SessionSetupScreen({super.key});
@@ -33,6 +34,19 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
         durationMinutes: _durationMinutes,
         idempotencyKey: 'mobile_${DateTime.now().millisecondsSinceEpoch}',
       );
+
+      // Start native Screen Time monitoring and shielding
+      try {
+        final screenTimeService = ScreenTimeService();
+        await screenTimeService.startSession(
+          sessionId: sessionId,
+          durationMinutes: _durationMinutes,
+        );
+        debugPrint('✅ Native Screen Time session started');
+      } catch (e) {
+        // Don't block session if native side fails (e.g. on simulator)
+        debugPrint('⚠️ Native Screen Time start failed (may be simulator): $e');
+      }
 
       // Navigate to active session screen
       if (mounted) {

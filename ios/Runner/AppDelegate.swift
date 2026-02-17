@@ -22,6 +22,11 @@ import UIKit
       self?.handleMethodCall(call: call, result: result)
     }
 
+    // Re-apply shields if there's an active session from before app was killed
+    if #available(iOS 16.0, *) {
+      ScreenTimeBridge.shared.reconcileOnLaunch()
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

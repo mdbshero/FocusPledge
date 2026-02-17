@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../models/session.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/backend_service.dart';
+import '../../../services/screen_time_service.dart';
 
 /// Provider for active session data
 final activeSessionProvider = StreamProvider.family<Session?, String>((
@@ -34,7 +35,10 @@ class ActiveSessionScreen extends ConsumerStatefulWidget {
 class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
   Timer? _timer;
   Timer? _heartbeatTimer;
+  Timer? _failurePollTimer;
   Duration? _remainingTime;
+  bool _isResolvingFailure = false;
+  final ScreenTimeService _screenTimeService = ScreenTimeService();
 
   @override
   void initState() {
@@ -44,12 +48,18 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
       const Duration(seconds: 30),
       (_) => _sendHeartbeat(),
     );
+    // Start native failure polling timer (check every 5 seconds)
+    _failurePollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _pollForFailure(),
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _heartbeatTimer?.cancel();
+    _failurePollTimer?.cancel();
     super.dispose();
   }
 
@@ -59,6 +69,50 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
     } catch (e) {
       // Silently fail - backend scheduler will handle missing heartbeats
       debugPrint('Heartbeat failed: $e');
+    }
+  }
+
+  /// Poll the native side for session failure flags set by the DeviceActivity extension
+  Future<void> _pollForFailure() async {
+    if (_isResolvingFailure) return;
+
+    try {
+      final status = await _screenTimeService.checkSessionStatus(
+        sessionId: widget.sessionId,
+      );
+
+      if (status['failed'] == true && mounted) {
+        debugPrint('⚠️ Native failure detected: ${status['reason']}');
+        _isResolvingFailure = true;
+        _failurePollTimer?.cancel();
+
+        try {
+          await BackendService.resolveSession(
+            sessionId: widget.sessionId,
+            resolution: 'FAILURE',
+            reason: status['reason'] as String? ?? 'app_opened',
+            nativeEvidence: {
+              'source': 'device_activity_monitor',
+              'reason': status['reason'],
+              'detectedAt': DateTime.now().toIso8601String(),
+            },
+          );
+          debugPrint('✅ Session resolved as FAILURE on backend');
+        } catch (e) {
+          debugPrint('Error resolving failed session: $e');
+          // The Firestore stream will still pick up the failure if backend eventually processes it
+        }
+
+        // Stop native session (remove shields)
+        try {
+          await _screenTimeService.stopSession(sessionId: widget.sessionId);
+        } catch (e) {
+          debugPrint('Error stopping native session: $e');
+        }
+      }
+    } catch (e) {
+      // Platform channel may fail on simulator - silently ignore
+      debugPrint('Failure poll error: $e');
     }
   }
 
@@ -77,6 +131,13 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
 
       if (remaining == Duration.zero) {
         timer.cancel();
+        _failurePollTimer?.cancel();
+        _heartbeatTimer?.cancel();
+        // Proactively stop native session when timer expires
+        _screenTimeService.stopSession(sessionId: widget.sessionId).catchError((e) {
+          debugPrint('Error stopping native session on timer expiry: $e');
+          return false;
+        });
       }
     });
   }

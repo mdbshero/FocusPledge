@@ -3,18 +3,19 @@ import FamilyControls
 import Foundation
 import ManagedSettings
 
-/// Handles communication between Flutter and iOS Screen Time APIs
+/// Handles communication between Flutter and iOS Screen Time APIs.
+/// Uses AppGroupStorage for data sharing with the DeviceActivity Monitor Extension.
 @available(iOS 16.0, *)
 class ScreenTimeBridge {
     static let shared = ScreenTimeBridge()
 
-    #if os(iOS)
     private let authCenter = AuthorizationCenter.shared
     private let store = ManagedSettingsStore()
-    #endif
+    private let storage = AppGroupStorage.shared
+    private let center = DeviceActivityCenter()
 
-    // Shared app group identifier for extension communication
-    private let appGroupIdentifier = "group.com.focuspledge.shared"
+    /// The user's selected apps to block during sessions
+    var appSelection = FamilyActivitySelection()
 
     private init() {}
 
@@ -22,25 +23,20 @@ class ScreenTimeBridge {
 
     /// Request FamilyControls authorization
     func requestAuthorization(completion: @escaping (Bool) -> Void) {
-        #if os(iOS)
         Task {
             do {
                 try await authCenter.requestAuthorization(for: .individual)
                 let status = authCenter.authorizationStatus
                 completion(status == .approved)
             } catch {
-                print("Authorization request failed: \(error)")
+                print("[ScreenTimeBridge] Authorization request failed: \(error)")
                 completion(false)
             }
         }
-        #else
-        completion(false)
-        #endif
     }
 
     /// Get current authorization status
     func getAuthorizationStatus() -> String {
-        #if os(iOS)
         let status = authCenter.authorizationStatus
         switch status {
         case .notDetermined:
@@ -52,127 +48,193 @@ class ScreenTimeBridge {
         @unknown default:
             return "unknown"
         }
-        #else
-        return "notDetermined"
-        #endif
     }
 
     // MARK: - App Selection
 
-    /// Present the FamilyActivityPicker for app selection
+    /// Present the FamilyActivityPicker for app selection.
+    /// Note: FamilyActivityPicker is SwiftUI-only; returns false until SwiftUI hosting is wired.
     func presentAppPicker(completion: @escaping (Bool) -> Void) {
-        // Note: This will be implemented with SwiftUI FamilyActivityPicker
-        // For now, return placeholder
-        print("App picker presentation requested")
-        // TODO: Present FamilyActivityPicker and store selection
+        print("[ScreenTimeBridge] App picker presentation requested")
+        // TODO: Present FamilyActivityPicker via SwiftUI hosting controller
         completion(false)
+    }
+
+    /// Save the current app selection to App Group for the extension to use
+    func saveAppSelection() {
+        do {
+            let data = try JSONEncoder().encode(appSelection)
+            storage.saveBlockedAppsSelection(data)
+            print("[ScreenTimeBridge] Saved app selection: \(appSelection.applicationTokens.count) apps, \(appSelection.categoryTokens.count) categories")
+        } catch {
+            print("[ScreenTimeBridge] Error saving app selection: \(error)")
+        }
     }
 
     // MARK: - Session Management
 
-    /// Start a monitoring session with Screen Time shielding
+    /// Start a monitoring session with Screen Time shielding.
+    /// 1. Writes session info to App Group
+    /// 2. Schedules DeviceActivity monitoring for the session window
+    /// 3. Applies ManagedSettings shields immediately
     func startSession(sessionId: String, durationMinutes: Int) -> Bool {
-        #if os(iOS)
         guard authCenter.authorizationStatus == .approved else {
-            print("Cannot start session: not authorized")
+            print("[ScreenTimeBridge] Cannot start session: not authorized")
             return false
         }
 
-        // Write session info to App Group
-        if let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) {
-            sharedDefaults.set(sessionId, forKey: "activeSessionId")
-            sharedDefaults.set(Date().timeIntervalSince1970, forKey: "sessionStartTime")
-            sharedDefaults.set(durationMinutes, forKey: "sessionDurationMinutes")
-            sharedDefaults.set(false, forKey: "sessionFailed")
-            sharedDefaults.set(nil, forKey: "failureReason")
-            sharedDefaults.synchronize()
+        let now = Date()
+        let endTime = Calendar.current.date(byAdding: .minute, value: durationMinutes, to: now)!
 
-            print("Session started: \(sessionId) for \(durationMinutes) minutes")
+        // 1. Write session state to App Group
+        storage.setActiveSession(id: sessionId, startTime: now, endTime: endTime)
 
-            // TODO: Schedule DeviceActivity monitoring
-            // TODO: Apply ManagedSettings shields
+        // 2. Save current app selection for the extension
+        saveAppSelection()
 
-            return true
+        // 3. Schedule DeviceActivity monitoring
+        let activityName = DeviceActivityName("focuspledge_session_\(sessionId)")
+
+        let startComponents = Calendar.current.dateComponents(
+            [.hour, .minute, .second],
+            from: now
+        )
+        let endComponents = Calendar.current.dateComponents(
+            [.hour, .minute, .second],
+            from: endTime
+        )
+
+        let schedule = DeviceActivitySchedule(
+            intervalStart: startComponents,
+            intervalEnd: endComponents,
+            repeats: false
+        )
+
+        // Create events for each blocked app token (1s usage = violation)
+        var events: [DeviceActivityEvent.Name: DeviceActivityEvent] = [:]
+        for (index, token) in appSelection.applicationTokens.enumerated() {
+            let eventName = DeviceActivityEvent.Name("app_violation_\(index)")
+            events[eventName] = DeviceActivityEvent(
+                applications: [token],
+                threshold: DateComponents(second: 1)
+            )
+        }
+        for (index, token) in appSelection.categoryTokens.enumerated() {
+            let eventName = DeviceActivityEvent.Name("category_violation_\(index)")
+            events[eventName] = DeviceActivityEvent(
+                categories: [token],
+                threshold: DateComponents(second: 1)
+            )
         }
 
-        return false
-        #else
-        return false
-        #endif
+        do {
+            try center.startMonitoring(activityName, during: schedule, events: events)
+            print("[ScreenTimeBridge] Monitoring started for session: \(sessionId), duration: \(durationMinutes)m")
+        } catch {
+            print("[ScreenTimeBridge] Error starting monitoring: \(error)")
+            // Continue — shields still apply directly
+        }
+
+        // 4. Apply shields immediately (don't wait for intervalDidStart callback)
+        applyShields()
+
+        print("[ScreenTimeBridge] Session started: \(sessionId) for \(durationMinutes) minutes")
+        return true
     }
 
-    /// Stop an active session
+    /// Stop an active session.
+    /// Removes shields, stops monitoring, clears App Group state.
     func stopSession(sessionId: String) -> Bool {
-        if let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) {
-            let activeSessionId = sharedDefaults.string(forKey: "activeSessionId")
+        let activeSessionId = storage.getActiveSessionId()
 
-            guard activeSessionId == sessionId else {
-                print(
-                    "Session mismatch: requested \(sessionId), active is \(activeSessionId ?? "none")"
-                )
-                return false
-            }
-
-            // Clear session data
-            sharedDefaults.removeObject(forKey: "activeSessionId")
-            sharedDefaults.removeObject(forKey: "sessionStartTime")
-            sharedDefaults.removeObject(forKey: "sessionDurationMinutes")
-            sharedDefaults.removeObject(forKey: "sessionFailed")
-            sharedDefaults.removeObject(forKey: "failureReason")
-            sharedDefaults.synchronize()
-
-            print("Session stopped: \(sessionId)")
-
-            // TODO: Remove ManagedSettings shields
-            // TODO: Cancel DeviceActivity monitoring
-
-            return true
+        guard activeSessionId == sessionId else {
+            print("[ScreenTimeBridge] Session mismatch: requested \(sessionId), active is \(activeSessionId ?? "none")")
+            return false
         }
 
-        return false
+        removeShields()
+
+        let activityName = DeviceActivityName("focuspledge_session_\(sessionId)")
+        center.stopMonitoring([activityName])
+
+        storage.clearActiveSession()
+
+        print("[ScreenTimeBridge] Session stopped: \(sessionId)")
+        return true
     }
 
-    /// Check session status (for polling)
+    /// Check session status by reading App Group failure flags.
+    /// Called by Flutter via polling to detect violations.
     func checkSessionStatus(sessionId: String) -> [String: Any] {
-        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            return [
-                "isActive": false,
-                "failed": false,
-                "reason": NSNull(),
-            ]
-        }
-
-        let activeSessionId = sharedDefaults.string(forKey: "activeSessionId")
-        let sessionFailed = sharedDefaults.bool(forKey: "sessionFailed")
-        let failureReason = sharedDefaults.string(forKey: "failureReason")
-
+        let activeSessionId = storage.getActiveSessionId()
         let isActive = activeSessionId == sessionId
+        let failure = storage.checkSessionFailed()
 
         return [
             "isActive": isActive,
-            "failed": sessionFailed,
-            "reason": failureReason ?? NSNull(),
+            "failed": failure.failed,
+            "reason": failure.reason ?? NSNull(),
+            "failureTimestamp": failure.timestamp?.timeIntervalSince1970 ?? NSNull(),
+            "failureAppBundleId": failure.appBundleId ?? NSNull(),
         ]
     }
 
-    /// Get App Group state for debugging
+    /// Get full App Group state for debugging
     func getAppGroupState() -> [String: Any] {
-        guard let sharedDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            return ["error": "Cannot access app group"]
+        return storage.getAllState()
+    }
+
+    // MARK: - Shield Management
+
+    /// Apply ManagedSettings shields to block selected apps
+    private func applyShields() {
+        if !appSelection.applicationTokens.isEmpty {
+            store.shield.applications = appSelection.applicationTokens
+            print("[ScreenTimeBridge] Shielded \(appSelection.applicationTokens.count) apps")
         }
 
-        let activeSessionId = sharedDefaults.string(forKey: "activeSessionId")
-        let sessionStartTime = sharedDefaults.double(forKey: "sessionStartTime")
-        let sessionDurationMinutes = sharedDefaults.integer(forKey: "sessionDurationMinutes")
-        let sessionFailed = sharedDefaults.bool(forKey: "sessionFailed")
-        let failureReason = sharedDefaults.string(forKey: "failureReason")
+        if !appSelection.categoryTokens.isEmpty {
+            store.shield.applicationCategories = ShieldSettings
+                .ActivityCategoryPolicy<Application>
+                .specific(appSelection.categoryTokens)
+            store.shield.webDomainCategories = ShieldSettings
+                .ActivityCategoryPolicy<WebDomain>
+                .specific(appSelection.categoryTokens)
+            print("[ScreenTimeBridge] Shielded \(appSelection.categoryTokens.count) categories")
+        }
+    }
 
-        return [
-            "activeSessionId": activeSessionId ?? NSNull(),
-            "sessionStartTime": sessionStartTime,
-            "sessionDurationMinutes": sessionDurationMinutes,
-            "sessionFailed": sessionFailed,
-            "failureReason": failureReason ?? NSNull(),
-        ]
+    /// Remove all ManagedSettings shields
+    private func removeShields() {
+        store.shield.applications = nil
+        store.shield.applicationCategories = nil
+        store.shield.webDomainCategories = nil
+        store.clearAllSettings()
+        print("[ScreenTimeBridge] All shields removed")
+    }
+
+    /// Re-apply shielding if there's an active session (for app relaunch scenarios)
+    func reconcileOnLaunch() {
+        guard let sessionId = storage.getActiveSessionId(),
+              let endTime = storage.getSessionEndTime(),
+              endTime > Date() else {
+            // No active session or session expired — clean up
+            removeShields()
+            return
+        }
+
+        print("[ScreenTimeBridge] Reconciling: active session \(sessionId) found, re-applying shields")
+
+        if let selectionData = storage.getBlockedAppsSelection() {
+            do {
+                appSelection = try JSONDecoder().decode(
+                    FamilyActivitySelection.self,
+                    from: selectionData
+                )
+                applyShields()
+            } catch {
+                print("[ScreenTimeBridge] Error loading saved selection: \(error)")
+            }
+        }
     }
 }
