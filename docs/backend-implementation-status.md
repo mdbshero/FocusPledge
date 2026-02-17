@@ -1,7 +1,7 @@
 # Backend Implementation Status
 
-**Last updated:** January 28, 2026  
-**Status:** Core backend complete, ready for security rules and Flutter integration
+**Last updated:** February 17, 2026  
+**Status:** Core backend complete, Firebase emulator integration verified, Flutter UI wired to all Cloud Functions
 
 ---
 
@@ -189,19 +189,25 @@ User purchases credits (iOS):
   Stripe webhook → handleStripeWebhook() → Ledger entry + Balance increment
 
 User starts session (iOS):
-  Flutter app → startSession() → Session doc + credits_lock ledger entry
+  Flutter SessionSetupScreen → startSession() → Session doc + credits_lock ledger entry
   ↓
-  Flutter polls heartbeat every 30s
+  Flutter calls ScreenTimeService.startSession() → MethodChannel → ScreenTimeBridge
   ↓
-  iOS Screen Time monitors → Violation detected OR Duration complete
+  ScreenTimeBridge: writes App Group → schedules DeviceActivityCenter → applies ManagedSettings shields
   ↓
-  Flutter calls resolveSession(FAILURE/SUCCESS)
+  Flutter ActiveSessionScreen polls heartbeat every 30s + checks native failure every 5s
   ↓
-  Server: credits_burn/refund + ash_grant + session status update
+  DeviceActivity Monitor Extension detects violation → writes failure flag to App Group
+  ↓
+  Flutter detects failure via checkSessionStatus() → calls resolveSession(FAILURE)
+  ↓
+  Server: credits_burn + ash_grant + session status update
+
+  OR: Timer expires → Flutter stops native session → backend auto-resolves SUCCESS
 
 Background jobs:
   Every 5 min: Reconcile (materialize wallet balances from ledger)
-  Every 5 min: Expiry job (auto-resolve stale sessions)
+  Every 5 min: Expiry job (auto-resolve stale sessions with no heartbeat)
   Every 15 min: Incremental reconcile (paged delta application)
 ```
 
@@ -256,39 +262,28 @@ Background jobs:
 
 ## 📋 Next Steps
 
-### Immediate (Sat Feb 7)
+### Completed Since Last Update
 
-- **Security Rules Draft + Tests**
-  - Deny client writes to `users.wallet.*`
-  - Deny client writes to `ledger/*`
-  - Session access boundaries (users can only read their own sessions)
-  - Rules test harness with emulator
+- ✅ **Security Rules Draft + Tests** (Jan 29) — 15 test cases covering all collections
+- ✅ **Flutter UI Implementation** (Feb 9-14) — Auth, wallet, buy credits, pledge setup, active session screens
+- ✅ **Flutter ↔ Backend Wiring** (Feb 16) — BackendService.dart created, all Cloud Functions callable from UI
+- ✅ **Firebase Emulator Integration** (Feb 16) — Fixed SIGABRT crash, emulators verified working
+- ✅ **iOS Screen Time Extension** (Feb 17) — DeviceActivity Monitor extension + ManagedSettings shielding
+- ✅ **Session Failure Polling** (Feb 17) — Flutter polls native side every 5s, auto-calls resolveSession(FAILURE)
 
-### Week 2 (Feb 8-14)
+### Upcoming
 
-- **Flutter App Architecture** (Sun Feb 8)
-  - Feature folders + routing + state management
-- **Auth Flow** (Mon Feb 9)
-  - Sign-in screen + Firebase Auth integration
+- **Redemption Session Support** (Feb 23)
+  - `type: REDEMPTION` flow in `startSession` / `resolveSession`
+  - Redemption-specific settlement logic
 
-- **Wallet Screen** (Tue Feb 10)
-  - Display credits/ash/obsidian/votes from Firestore
+- **Shop Purchase Function** (Feb 25)
+  - Server callable: deduct Obsidian, grant cosmetic
+  - Shop catalog schema in Firestore
 
-- **Buy Credits UI** (Wed Feb 11)
-  - Pack picker + Stripe payment sheet integration
-
-- **Pledge Setup UI** (Thu Feb 12)
-  - Amount + duration selector + startSession() call
-
-- **Active Session "Pulse"** (Fri Feb 13)
-  - Timer UI + heartbeat loop + safety messaging
-
-### Week 3 (Feb 15-21)
-
-- **iOS MethodChannel Scaffold** (Sat Feb 14)
-- **App Group Storage** (Sun Feb 15)
-- **DeviceActivity Extension** (Mon Feb 16)
-- Shielding + violation detection
+- **Observability** (Feb 27)
+  - Analytics events + structured logging in Cloud Functions
+  - Error alerting configuration
 
 ---
 
@@ -332,7 +327,7 @@ Background jobs:
 
 ---
 
-**Status:** ✅ Backend core complete  
+**Status:** ✅ Backend core complete, Flutter integration wired  
 **Test Coverage:** 21/21 passing  
-**Next Milestone:** Security rules + Flutter UI  
-**Target:** Production-ready backend by Week 2 completion
+**Next Milestone:** Redemption session support + shop purchase function  
+**Target:** On-device Screen Time testing, then App Store submission prep (early March)

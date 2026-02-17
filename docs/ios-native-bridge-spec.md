@@ -2,7 +2,9 @@
 
 **Document purpose:** Technical specification for the Flutter ↔ iOS Swift bridge that enables Screen Time enforcement during pledge sessions, with robust failure detection and server reconciliation.
 
-**Last updated:** January 28, 2026
+**Last updated:** February 17, 2026
+
+**Implementation status:** ✅ Fully implemented — MethodChannel bridge, App Group storage, DeviceActivity Monitor extension, ManagedSettings shielding, and Flutter failure polling all complete and building successfully.
 
 ---
 
@@ -196,7 +198,9 @@ class AppGroupStorage {
 
 ### Channel Name
 
-`"com.focuspledge.native_bridge"`
+`"com.focuspledge/screen_time"`
+
+> **Note:** Originally specified as `com.focuspledge.native_bridge` — implemented as `com.focuspledge/screen_time` for clarity.
 
 ### Methods
 

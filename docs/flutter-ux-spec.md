@@ -2,7 +2,9 @@
 
 **Document purpose:** Comprehensive screen-by-screen UX specification with state transitions, skill-first copy guidelines, and anti-gambling framing compliance.
 
-**Last updated:** January 28, 2026
+**Last updated:** February 17, 2026
+
+**Implementation status:** Core screens implemented (auth, wallet, buy credits, pledge setup, active session with Pulse countdown). Session setup now wires to native Screen Time. Active session includes failure polling and auto-resolution.
 
 ---
 

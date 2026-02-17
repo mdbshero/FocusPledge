@@ -2,7 +2,7 @@
 
 **Document purpose:** Step-by-step checklist to configure the FocusPledge repository with all necessary dependencies, Firebase integration, and local development environment.
 
-**Last updated:** January 28, 2026
+**Last updated:** February 17, 2026
 
 ---
 

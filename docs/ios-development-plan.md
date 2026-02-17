@@ -90,7 +90,44 @@
 - ✅ COMPLETE: Platform availability guards (@available checks) for iOS 16+ Screen Time APIs
 - ✅ COMPLETE: iOS compilation fixes and Dart code formatting
 
-**Next:** iOS DeviceActivity extension target creation and ManagedSettings shielding implementation
+### February 16-17, 2026
+
+**iOS Native Implementation (Phase 3 — Screen Time Enforcement):**
+
+- ✅ COMPLETE: Firebase emulator integration debugging
+  - Fixed SIGABRT crash from duplicate Firebase initialization (native plugin vs Dart init)
+  - Created GoogleService-Info.plist with emulator config (demo-focuspledge project)
+  - Simplified firebase_service.dart to call Firebase.initializeApp() without custom options
+- ✅ COMPLETE: BackendService.dart wiring (Flutter UI ↔ Cloud Functions)
+  - startSession, heartbeatSession, resolveSession, createCreditsPurchaseIntent
+- ✅ COMPLETE: AppGroupStorage.swift shared helper class
+  - Singleton for read/write to App Group UserDefaults
+  - Methods: setActiveSession, clearActiveSession, markSessionFailed, checkSessionFailed, saveBlockedAppsSelection, getBlockedAppsSelection, getAllState
+  - Added to Xcode project (PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase)
+- ✅ COMPLETE: FocusPledgeMonitor DeviceActivity extension
+  - Full PBXNativeTarget added to project.pbxproj with Debug/Release/Profile configs
+  - Extension embedded in Runner.app/PlugIns/ via Embed App Extensions build phase
+  - FocusPledgeMonitorExtension.swift: DeviceActivityMonitor subclass with intervalDidStart (apply shields), intervalDidEnd (remove shields), eventDidReachThreshold (flag violation)
+  - Entitlements: Family Controls + App Group (group.com.focuspledge.shared)
+  - Deployment target: iOS 16.0
+- ✅ COMPLETE: ScreenTimeBridge.swift rewrite with real implementation
+  - startSession: writes to App Group → saves app selection → schedules DeviceActivityCenter → applies ManagedSettings shields
+  - stopSession: removes shields → stops monitoring → clears App Group
+  - checkSessionStatus: reads failure flags from App Group
+  - reconcileOnLaunch: re-applies shields if active session exists after app kill/relaunch
+- ✅ COMPLETE: Flutter session lifecycle wiring
+  - SessionSetupScreen: calls ScreenTimeService.startSession() after backend session creation
+  - ActiveSessionScreen: 5-second failure polling timer reads native failure flags via checkSessionStatus()
+  - Auto-resolves session via BackendService.resolveSession(FAILURE) when native violation detected
+  - Stops native session and clears shields on timer expiry
+- ✅ COMPLETE: AppDelegate.swift updated with reconcileOnLaunch() call
+- ✅ COMPLETE: Buy credits screen Row overflow fix (Flexible wrapper)
+- ✅ COMPLETE: App builds and runs on iPhone 16e simulator with Firebase emulators
+- ✅ COMPLETE: Extension .appex embedded in app bundle (verified)
+
+**Note:** DeviceActivity/ManagedSettings/FamilyControls APIs require a real device for functional testing. The app builds on simulator but Screen Time features only activate on hardware.
+
+**Next:** Redemption session UI, shop catalog, on-device testing with Apple Developer entitlements
 
 **Backend implementation status:**
 
@@ -107,7 +144,7 @@
 - Stripe integration spec: ✅ Complete (Jan 28)
 - Repo scaffolding checklist: ✅ Complete (Jan 28)
 
-**Next up:** Security rules draft + tests (Sat Feb 7 task), then Flutter UI implementation starting Sun Feb 8.
+**Next up:** Completion screens polish (Sat Feb 21), redemption session UI (Sun Feb 22), shop implementation (Tue-Thu Feb 24-26), then on-device testing and hardening.
 
 ## Terminology (Session 1 alignment)
 
@@ -393,12 +430,12 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Thu Feb 12 | ~~Flutter: pledge setup UI~~ | 1–2h | ✅ Pledge amount/duration selection + startSession stub (COMPLETE Feb 9-13) |
 | Fri Feb 13 | ~~Flutter: active session "Pulse"~~ | 1–2h | ✅ Countdown timer + completion screens + state streaming (COMPLETE Feb 9-13) |
 | Sat Feb 14 | ~~iOS: MethodChannel scaffold~~ | 1–2h | ✅ 7 methods wired (auth/picker/start/stop/check/status/debug) + App Group config (COMPLETE Feb 14) |
-| Sun Feb 15 | iOS: App Group storage | 1–2h | Shared keys + read/write utilities + debug viewer |
-| Mon Feb 16 | iOS: DeviceActivity extension target | 1–2h | Extension created + monitoring schedule stub |
-| Tue Feb 17 | iOS: shielding apply/remove | 1–2h | Basic ManagedSettings shielding toggles during session window |
-| Wed Feb 18 | iOS: violation flagging | 1–2h | Extension writes `sessionFailed` with reason to App Group |
-| Thu Feb 19 | Flutter: native polling + fail reconcile | 1–2h | Poll `checkSessionStatus` + call `resolveSession(FAILURE)` |
-| Fri Feb 20 | Backend: end-to-end settle path | 1–2h | `resolveSession` writes wallet updates + session status transitions |
+| Sun Feb 15 | ~~iOS: App Group storage~~ | 1–2h | ✅ AppGroupStorage.swift singleton + all shared keys + debug viewer (COMPLETE Feb 16) |
+| Mon Feb 16 | ~~iOS: DeviceActivity extension target~~ | 1–2h | ✅ FocusPledgeMonitor extension target in Xcode + monitoring callbacks (COMPLETE Feb 17) |
+| Tue Feb 17 | ~~iOS: shielding apply/remove~~ | 1–2h | ✅ ManagedSettingsStore shields applied/removed in ScreenTimeBridge + extension (COMPLETE Feb 17) |
+| Wed Feb 18 | ~~iOS: violation flagging~~ | 1–2h | ✅ Extension writes sessionFailed + reason + appBundleId to App Group (COMPLETE Feb 17) |
+| Thu Feb 19 | ~~Flutter: native polling + fail reconcile~~ | 1–2h | ✅ 5s polling timer + auto resolveSession(FAILURE) + native stop (COMPLETE Feb 17) |
+| Fri Feb 20 | ~~Backend: end-to-end settle path~~ | 1–2h | ✅ resolveSession already writes wallet updates + session transitions (COMPLETE Jan 28) |
 | Sat Feb 21 | Flutter: completion screens | 1–2h | Success/failure screens + redemption timer display |
 | Sun Feb 22 | Flutter: redemption session UI | 1–2h | Start redemption session + show expiry + results screen |
 | Mon Feb 23 | Backend: redemption session support | 1–2h | `type: REDEMPTION` flow supported in `startSession/resolveSession` |
