@@ -1,7 +1,7 @@
 import DeviceActivity
-import ManagedSettings
 import FamilyControls
 import Foundation
+import ManagedSettings
 
 /// DeviceActivity Monitor Extension for FocusPledge.
 /// Runs as a separate process managed by iOS. Monitors device usage during pledge sessions
@@ -50,7 +50,9 @@ class FocusPledgeMonitorExtension: DeviceActivityMonitor {
     ) {
         super.eventDidReachThreshold(event, activity: activity)
 
-        print("[FocusPledgeMonitor] ⚠️ Violation detected! Event: \(event.rawValue), Activity: \(activity.rawValue)")
+        print(
+            "[FocusPledgeMonitor] ⚠️ Violation detected! Event: \(event.rawValue), Activity: \(activity.rawValue)"
+        )
 
         // Mark session as failed in App Group
         storage.markSessionFailed(
@@ -89,20 +91,27 @@ class FocusPledgeMonitorExtension: DeviceActivityMonitor {
             )
 
             // Apply shields to selected applications
-            store.shield.applications = selection.applicationTokens.isEmpty
+            store.shield.applications =
+                selection.applicationTokens.isEmpty
                 ? nil
                 : selection.applicationTokens
 
             // Apply shields to selected categories
-            store.shield.applicationCategories = selection.categoryTokens.isEmpty
+            store.shield.applicationCategories =
+                selection.categoryTokens.isEmpty
                 ? nil
-                : ShieldSettings.ActivityCategoryPolicy<Application>.specific(selection.categoryTokens)
+                : ShieldSettings.ActivityCategoryPolicy<Application>.specific(
+                    selection.categoryTokens)
 
-            store.shield.webDomainCategories = selection.categoryTokens.isEmpty
+            store.shield.webDomainCategories =
+                selection.categoryTokens.isEmpty
                 ? nil
-                : ShieldSettings.ActivityCategoryPolicy<WebDomain>.specific(selection.categoryTokens)
+                : ShieldSettings.ActivityCategoryPolicy<WebDomain>.specific(
+                    selection.categoryTokens)
 
-            print("[FocusPledgeMonitor] Shields applied: \(selection.applicationTokens.count) apps, \(selection.categoryTokens.count) categories")
+            print(
+                "[FocusPledgeMonitor] Shields applied: \(selection.applicationTokens.count) apps, \(selection.categoryTokens.count) categories"
+            )
         } catch {
             print("[FocusPledgeMonitor] Error loading app selection: \(error)")
         }

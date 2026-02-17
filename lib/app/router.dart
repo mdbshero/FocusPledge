@@ -5,6 +5,7 @@ import '../features/wallet/screens/wallet_screen.dart';
 import '../features/wallet/screens/buy_credits_screen.dart';
 import '../features/session/screens/session_setup_screen.dart';
 import '../features/session/screens/active_session_screen.dart';
+import '../features/session/screens/redemption_setup_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../providers/auth_provider.dart';
@@ -59,6 +60,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final sessionId = state.pathParameters['sessionId']!;
           return ActiveSessionScreen(sessionId: sessionId);
         },
+      ),
+      GoRoute(
+        path: '/session/redemption-setup',
+        name: 'redemption-setup',
+        builder: (context, state) => const RedemptionSetupScreen(),
       ),
       GoRoute(
         path: '/shop',

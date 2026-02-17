@@ -127,7 +127,49 @@
 
 **Note:** DeviceActivity/ManagedSettings/FamilyControls APIs require a real device for functional testing. The app builds on simulator but Screen Time features only activate on hardware.
 
-**Next:** Redemption session UI, shop catalog, on-device testing with Apple Developer entitlements
+### February 21, 2026
+
+**Completion Screens Polish (Feb 21 schedule — done ahead of schedule):**
+
+- ✅ COMPLETE: Animated completion screen with elastic icon animation + fade-in content transitions
+  - Success: green check with credits returned display
+  - Failure: red cancel with Ash earned, Frozen Votes gained, redemption countdown timer
+  - Live countdown timer reading from `redemptionExpiryProvider` (ticks every second)
+  - "Start Redemption Session" CTA button on failure screen navigates to redemption setup
+
+**Redemption Session UI (Feb 22 schedule — done ahead of schedule):**
+
+- ✅ COMPLETE: RedemptionSetupScreen with full redemption flow
+  - Live redemption window countdown banner at top
+  - "What's at Stake" card showing current Frozen Votes and Ash balances
+  - Duration picker (15/30/45/60 min presets)
+  - Outcomes card explaining success (rescue votes + ash→obsidian) vs failure (votes lost)
+  - Expired view with messaging when redemption window has passed
+  - "Start Redemption" button added to wallet screen redemption warning banner
+  - Route registered: `/session/redemption-setup`
+
+**Backend: Redemption Session Support (Feb 23 schedule — done ahead of schedule):**
+
+- ✅ COMPLETE: `handleStartSession` updated to accept `type: REDEMPTION`
+  - Validates active `redemptionExpiry` deadline hasn't passed
+  - Validates user has `purgatoryVotes > 0`
+  - No credits locked for redemption sessions (`pledgeAmount: 0`)
+- ✅ COMPLETE: `handleResolveSession` REDEMPTION branches
+  - SUCCESS: rescue Frozen Votes (zero out purgatoryVotes), convert Ash → Obsidian (1:1), clear redemption deadline, ledger entries (`frozen_votes_rescue`, `ash_to_obsidian_conversion`)
+  - FAILURE: burn Frozen Votes permanently (zero out purgatoryVotes), Ash remains, clear redemption deadline, ledger entry (`frozen_votes_burn`)
+- ✅ COMPLETE: BackendService.startRedemptionSession() Flutter wrapper
+- ✅ COMPLETE: Pledge FAILURE branch now also increments materialized `wallet.ash`
+
+**Shop Catalog + Inventory (Feb 24-26 schedule — done ahead of schedule):**
+
+- ✅ COMPLETE: ShopItem model with `ItemRarity` (common/uncommon/rare/legendary) and `ItemCategory` (theme/icon/badge/title) enums
+- ✅ COMPLETE: ShopPurchase model for tracking owned items
+- ✅ COMPLETE: Firestore schema: `shop/catalog/items/{itemId}` + `shop/purchases/records/{purchaseId}`
+- ✅ COMPLETE: `shopCatalogProvider`, `userPurchasesProvider`, `ownedItemIdsProvider` Riverpod providers
+- ✅ COMPLETE: `handlePurchaseShopItem` Cloud Function — validates item availability, checks Obsidian balance, deducts currency, records purchase, posts ledger entry (`obsidian_spend`)
+- ✅ COMPLETE: Full shop UI with category-grouped grid, rarity badges, owned state, Obsidian balance chip, purchase confirmation dialog
+
+**Next:** Observability (analytics + logging), unit tests, integration testing, on-device Screen Time testing
 
 **Backend implementation status:**
 
@@ -436,12 +478,12 @@ Designed for solo development with AI agent support. Each day is one coherent wo
 | Wed Feb 18 | ~~iOS: violation flagging~~ | 1–2h | ✅ Extension writes sessionFailed + reason + appBundleId to App Group (COMPLETE Feb 17) |
 | Thu Feb 19 | ~~Flutter: native polling + fail reconcile~~ | 1–2h | ✅ 5s polling timer + auto resolveSession(FAILURE) + native stop (COMPLETE Feb 17) |
 | Fri Feb 20 | ~~Backend: end-to-end settle path~~ | 1–2h | ✅ resolveSession already writes wallet updates + session transitions (COMPLETE Jan 28) |
-| Sat Feb 21 | Flutter: completion screens | 1–2h | Success/failure screens + redemption timer display |
-| Sun Feb 22 | Flutter: redemption session UI | 1–2h | Start redemption session + show expiry + results screen |
-| Mon Feb 23 | Backend: redemption session support | 1–2h | `type: REDEMPTION` flow supported in `startSession/resolveSession` |
-| Tue Feb 24 | Shop: catalog + inventory schema | 1–2h | Firestore shop catalog/inventory schema + read-only UI |
-| Wed Feb 25 | Shop: purchase function | 1–2h | Server purchase callable (deduct obsidian, grant cosmetic) |
-| Thu Feb 26 | Flutter: shop UI | 1–2h | Catalog list + purchase flow wired |
+| Sat Feb 21 | ~~Flutter: completion screens~~ | 1–2h | ✅ Polished success/failure screens + animated transitions + redemption countdown timer + Ash/Frozen Votes display + "Start Redemption" CTA (COMPLETE Feb 21) |
+| Sun Feb 22 | ~~Flutter: redemption session UI~~ | 1–2h | ✅ RedemptionSetupScreen with expiry countdown, stake display, duration picker, "Begin Redemption" flow + wallet banner link (COMPLETE Feb 21) |
+| Mon Feb 23 | ~~Backend: redemption session support~~ | 1–2h | ✅ `type: REDEMPTION` in startSession (validates expiry + purgatoryVotes) + resolveSession REDEMPTION branch (rescue votes / ash→obsidian on SUCCESS, burn votes on FAILURE) (COMPLETE Feb 21) |
+| Tue Feb 24 | ~~Shop: catalog + inventory schema~~ | 1–2h | ✅ ShopItem/ShopPurchase models + shopCatalogProvider/userPurchasesProvider + handlePurchaseShopItem Cloud Function + full shop UI with catalog grid, rarity badges, purchase flow (COMPLETE Feb 21) |
+| Wed Feb 25 | ~~Shop: purchase function~~ | 1–2h | ✅ Included in Feb 24 implementation — handlePurchaseShopItem with obsidian deduction, ledger entry, idempotency (COMPLETE Feb 21) |
+| Thu Feb 26 | ~~Flutter: shop UI~~ | 1–2h | ✅ Included in Feb 24 implementation — full catalog grid + purchase confirmation + owned state (COMPLETE Feb 21) |
 | Fri Feb 27 | Observability | 1–2h | Analytics events + structured logging in functions |
 | Sat Feb 28 | Tests: Functions unit tests | 1–2h | Unit tests for idempotency + core settlement invariants |
 | Sun Mar 1 | Tests: integration happy path | 1–2h | Manual test script + emulator runbook |

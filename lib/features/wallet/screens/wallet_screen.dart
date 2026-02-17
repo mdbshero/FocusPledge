@@ -91,6 +91,22 @@ class WalletScreen extends ConsumerWidget {
                               ),
                               textAlign: TextAlign.center,
                             ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () =>
+                                    context.push('/session/redemption-setup'),
+                                icon: const Icon(Icons.restore),
+                                label: const Text('Start Redemption'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      theme.colorScheme.onErrorContainer,
+                                  foregroundColor:
+                                      theme.colorScheme.errorContainer,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       );

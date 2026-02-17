@@ -40,7 +40,7 @@ import UIKit
         ))
       return
     }
-    
+
     let bridge = ScreenTimeBridge.shared
 
     switch call.method {

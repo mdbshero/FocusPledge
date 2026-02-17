@@ -37,6 +37,7 @@ class BackendService {
   static Future<String> startSession({
     required int pledgeAmount,
     required int durationMinutes,
+    String? type,
     String? idempotencyKey,
   }) async {
     final user = _auth.currentUser;
@@ -51,9 +52,26 @@ class BackendService {
       'pledgeAmount': pledgeAmount,
       'durationMinutes': durationMinutes,
       'idempotencyKey': key,
+      if (type != null) 'type': type,
     });
 
     return result.data['sessionId'] as String;
+  }
+
+  /// Start a redemption session (no credits locked — purely a focus challenge)
+  /// Returns the sessionId
+  static Future<String> startRedemptionSession({
+    required int durationMinutes,
+    String? idempotencyKey,
+  }) async {
+    return startSession(
+      pledgeAmount: 0,
+      durationMinutes: durationMinutes,
+      type: 'REDEMPTION',
+      idempotencyKey:
+          idempotencyKey ??
+          'redemption_${DateTime.now().millisecondsSinceEpoch}',
+    );
   }
 
   /// Send heartbeat for an active session
@@ -91,6 +109,29 @@ class BackendService {
       'idempotencyKey': key,
       if (reason != null) 'reason': reason,
       if (nativeEvidence != null) 'nativeEvidence': nativeEvidence,
+    });
+
+    return result.data as Map<String, dynamic>;
+  }
+
+  /// Purchase a shop item with Obsidian
+  static Future<Map<String, dynamic>> purchaseShopItem({
+    required String itemId,
+    String? idempotencyKey,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
+    final key =
+        idempotencyKey ??
+        'shop_${itemId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    final result =
+        await _functions.httpsCallable('handlePurchaseShopItem').call({
+      'itemId': itemId,
+      'idempotencyKey': key,
     });
 
     return result.data as Map<String, dynamic>;

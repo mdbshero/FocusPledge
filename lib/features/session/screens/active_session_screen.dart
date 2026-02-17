@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../models/session.dart';
+import '../../../providers/wallet_provider.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/backend_service.dart';
 import '../../../services/screen_time_service.dart';
@@ -134,7 +135,9 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
         _failurePollTimer?.cancel();
         _heartbeatTimer?.cancel();
         // Proactively stop native session when timer expires
-        _screenTimeService.stopSession(sessionId: widget.sessionId).catchError((e) {
+        _screenTimeService.stopSession(sessionId: widget.sessionId).catchError((
+          e,
+        ) {
           debugPrint('Error stopping native session on timer expiry: $e');
           return false;
         });
@@ -346,88 +349,322 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
   }
 }
 
-class _CompletionScreen extends StatelessWidget {
+class _CompletionScreen extends ConsumerStatefulWidget {
   final Session session;
 
   const _CompletionScreen({required this.session});
 
   @override
+  ConsumerState<_CompletionScreen> createState() => _CompletionScreenState();
+}
+
+class _CompletionScreenState extends ConsumerState<_CompletionScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _iconController;
+  late final AnimationController _contentController;
+  late final Animation<double> _iconScale;
+  late final Animation<double> _contentFade;
+  Timer? _redemptionTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _iconController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _iconScale = CurvedAnimation(
+      parent: _iconController,
+      curve: Curves.elasticOut,
+    );
+
+    _contentController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _contentFade = CurvedAnimation(
+      parent: _contentController,
+      curve: Curves.easeIn,
+    );
+
+    _iconController.forward();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _contentController.forward();
+    });
+
+    // Start redemption countdown timer for failures
+    if (widget.session.isFailed) {
+      _redemptionTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _updateRedemptionCountdown(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _iconController.dispose();
+    _contentController.dispose();
+    _redemptionTimer?.cancel();
+    super.dispose();
+  }
+
+  void _updateRedemptionCountdown() {
+    // Trigger rebuild so consumer re-reads the provider
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final session = widget.session;
     final isSuccess = session.isCompleted;
+    final redemptionExpiry = ref.watch(redemptionExpiryProvider).valueOrNull;
+
+    // Calculate redemption remaining
+    Duration? redemptionLeft;
+    if (!isSuccess && redemptionExpiry != null) {
+      final now = DateTime.now();
+      if (now.isBefore(redemptionExpiry)) {
+        redemptionLeft = redemptionExpiry.difference(now);
+      }
+    }
+
+    final ashEarned = session.pledgeAmount; // 1:1 policy
+    final frozenVotes = session.pledgeAmount; // 1:1 policy
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined,
-              size: 120,
-              color: isSuccess ? Colors.green : Colors.red,
+            const SizedBox(height: 24),
+
+            // Animated icon
+            ScaleTransition(
+              scale: _iconScale,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (isSuccess ? Colors.green : Colors.red).withOpacity(
+                    0.1,
+                  ),
+                ),
+                child: Icon(
+                  isSuccess ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                  size: 100,
+                  color: isSuccess ? Colors.green : Colors.red,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
-            Text(
-              isSuccess ? 'Success!' : 'Session Failed',
-              style: theme.textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isSuccess ? Colors.green : Colors.red,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (isSuccess)
-              Text(
-                'Credits returned and Impact Points earned!',
-                style: theme.textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              )
-            else
-              Text(
-                'Credits converted to Ash. Complete a Redemption Session within 24h.',
-                style: theme.textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-            const SizedBox(height: 32),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _ResultRow(
-                      label: 'Pledged Amount',
-                      value: '${session.pledgeAmount} FC',
-                    ),
-                    const Divider(),
-                    _ResultRow(
-                      label: 'Duration',
-                      value: '${session.durationMinutes} min',
-                    ),
-                    const Divider(),
-                    _ResultRow(
-                      label: 'Outcome',
-                      value: isSuccess ? 'Success' : 'Failure',
-                      valueColor: isSuccess ? Colors.green : Colors.red,
-                    ),
-                  ],
+
+            // Title
+            FadeTransition(
+              opacity: _contentFade,
+              child: Text(
+                isSuccess ? 'Session Complete!' : 'Session Failed',
+                style: theme.textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isSuccess ? Colors.green : Colors.red,
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Subtitle
+            FadeTransition(
+              opacity: _contentFade,
+              child: Text(
+                isSuccess
+                    ? 'Great focus! Your credits have been returned.'
+                    : 'Your credits have been converted to Ash.',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
             const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => context.go('/wallet'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
+
+            // Results card
+            FadeTransition(
+              opacity: _contentFade,
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      _ResultRow(
+                        label: 'Pledged',
+                        value: '${session.pledgeAmount} FC',
+                        icon: Icons.stars,
+                        iconColor: theme.colorScheme.primary,
+                      ),
+                      const Divider(height: 24),
+                      _ResultRow(
+                        label: 'Duration',
+                        value: '${session.durationMinutes} min',
+                        icon: Icons.timer_outlined,
+                        iconColor: theme.colorScheme.secondary,
+                      ),
+                      const Divider(height: 24),
+                      _ResultRow(
+                        label: 'Outcome',
+                        value: isSuccess ? 'Success' : 'Failure',
+                        valueColor: isSuccess ? Colors.green : Colors.red,
+                        icon: isSuccess
+                            ? Icons.emoji_events
+                            : Icons.warning_amber,
+                        iconColor: isSuccess ? Colors.green : Colors.red,
+                      ),
+                      if (isSuccess) ...[
+                        const Divider(height: 24),
+                        _ResultRow(
+                          label: 'Credits Returned',
+                          value: '${session.pledgeAmount} FC',
+                          icon: Icons.keyboard_return,
+                          iconColor: Colors.green,
+                          valueColor: Colors.green,
+                        ),
+                      ],
+                      if (!isSuccess) ...[
+                        const Divider(height: 24),
+                        _ResultRow(
+                          label: 'Ash Earned',
+                          value: '$ashEarned',
+                          icon: Icons.local_fire_department,
+                          iconColor: Colors.grey,
+                        ),
+                        const Divider(height: 24),
+                        _ResultRow(
+                          label: 'Frozen Votes',
+                          value: '+$frozenVotes',
+                          icon: Icons.ac_unit,
+                          iconColor: Colors.blue,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-              child: const Text('Return to Wallet'),
+            ),
+
+            // Redemption countdown for failures
+            if (!isSuccess && redemptionLeft != null) ...[
+              const SizedBox(height: 20),
+              FadeTransition(
+                opacity: _contentFade,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.errorContainer,
+                        theme.colorScheme.errorContainer.withOpacity(0.7),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.colorScheme.error.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.hourglass_bottom,
+                        color: theme.colorScheme.onErrorContainer,
+                        size: 32,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Redemption Window',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatCountdown(redemptionLeft),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: theme.colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: [const FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Complete a Redemption Session to rescue your Frozen Votes and convert Ash → Obsidian',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onErrorContainer.withOpacity(
+                            0.8,
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 32),
+
+            // Action buttons
+            FadeTransition(
+              opacity: _contentFade,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!isSuccess && redemptionLeft != null)
+                    ElevatedButton.icon(
+                      onPressed: () => context.go('/session/redemption-setup'),
+                      icon: const Icon(Icons.restore),
+                      label: const Text('Start Redemption Session'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.error,
+                        foregroundColor: theme.colorScheme.onError,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  if (!isSuccess && redemptionLeft != null)
+                    const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => context.go('/wallet'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Return to Wallet'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatCountdown(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    final seconds = duration.inSeconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 }
 
@@ -435,33 +672,43 @@ class _ResultRow extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
+  final IconData? icon;
+  final Color? iconColor;
 
-  const _ResultRow({required this.label, required this.value, this.valueColor});
+  const _ResultRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.icon,
+    this.iconColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 20, color: iconColor ?? theme.colorScheme.primary),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          child: Text(
             label,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: valueColor,
-            ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: valueColor,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -53,8 +53,117 @@ export async function handleResolveSession(data: any, context: any) {
 
     const userId = session.userId as string;
     const pledgedAmount = session.pledgeAmount || 0;
+    const sessionType = session.type || 'PLEDGE';
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const userRef = db.collection('users').doc(userId);
 
+    // =========================================================================
+    // REDEMPTION SESSION RESOLUTION
+    // =========================================================================
+    if (sessionType === 'REDEMPTION') {
+      if (resolution === 'SUCCESS') {
+        // Redemption success: rescue Frozen Votes, convert Ash → Obsidian, clear deadline
+        const userSnap = await tx.get(userRef);
+        const userData = userSnap.exists ? userSnap.data() as any : {};
+        const currentAsh = userData?.wallet?.ash || 0;
+        const currentPurgatoryVotes = userData?.wallet?.purgatoryVotes || 0;
+
+        // Ledger: frozen_votes_rescue
+        if (currentPurgatoryVotes > 0) {
+          const rescueRef = db.collection('ledger').doc();
+          tx.set(rescueRef, {
+            entryId: rescueRef.id,
+            kind: 'frozen_votes_rescue',
+            userId,
+            amount: currentPurgatoryVotes,
+            metadata: { sessionId },
+            createdAt: now,
+            idempotencyKey,
+          });
+        }
+
+        // Ledger: ash_to_obsidian_conversion
+        if (currentAsh > 0) {
+          const conversionRef = db.collection('ledger').doc();
+          tx.set(conversionRef, {
+            entryId: conversionRef.id,
+            kind: 'ash_to_obsidian_conversion',
+            userId,
+            amount: currentAsh,
+            metadata: { sessionId, ashConverted: currentAsh, obsidianGranted: currentAsh },
+            createdAt: now,
+            idempotencyKey,
+          });
+        }
+
+        // Update wallet: zero out purgatoryVotes and ash, add obsidian, clear deadline
+        tx.set(userRef, {
+          wallet: {
+            purgatoryVotes: 0,
+            ash: 0,
+            obsidian: admin.firestore.FieldValue.increment(currentAsh),
+          },
+          deadlines: { redemptionExpiry: admin.firestore.FieldValue.delete() },
+        }, { merge: true } as any);
+
+        tx.update(sessionRef, {
+          status: 'COMPLETED',
+          'settlement.resolvedAt': now,
+          'settlement.resolution': 'SUCCESS',
+          'settlement.idempotencyKey': idempotencyKey,
+          'settlement.votesRescued': currentPurgatoryVotes,
+          'settlement.ashConverted': currentAsh,
+          'settlement.obsidianGranted': currentAsh,
+        });
+
+        return {
+          status: 'settled',
+          resolution: 'SUCCESS',
+          votesRescued: currentPurgatoryVotes,
+          ashConverted: currentAsh,
+          obsidianGranted: currentAsh,
+        };
+      }
+
+      // REDEMPTION FAILURE: Frozen Votes are lost permanently, ash remains
+      const userSnap = await tx.get(userRef);
+      const userData = userSnap.exists ? userSnap.data() as any : {};
+      const lostVotes = userData?.wallet?.purgatoryVotes || 0;
+
+      // Ledger: frozen_votes_burn (permanent loss)
+      if (lostVotes > 0) {
+        const burnRef = db.collection('ledger').doc();
+        tx.set(burnRef, {
+          entryId: burnRef.id,
+          kind: 'frozen_votes_burn',
+          userId,
+          amount: lostVotes,
+          metadata: { sessionId, reason },
+          createdAt: now,
+          idempotencyKey,
+        });
+      }
+
+      // Update wallet: zero out purgatoryVotes, clear deadline
+      tx.set(userRef, {
+        wallet: { purgatoryVotes: 0 },
+        deadlines: { redemptionExpiry: admin.firestore.FieldValue.delete() },
+      }, { merge: true } as any);
+
+      tx.update(sessionRef, {
+        status: 'FAILED',
+        'settlement.resolvedAt': now,
+        'settlement.resolution': 'FAILURE',
+        'settlement.idempotencyKey': idempotencyKey,
+        'settlement.votesLost': lostVotes,
+      });
+
+      return { status: 'settled', resolution: 'FAILURE', votesLost: lostVotes };
+    }
+
+    // =========================================================================
+    // PLEDGE SESSION RESOLUTION (existing logic)
+    // =========================================================================
     if (resolution === 'SUCCESS') {
       const ledgerRef = db.collection('ledger').doc();
       tx.set(ledgerRef, {
@@ -101,13 +210,15 @@ export async function handleResolveSession(data: any, context: any) {
       idempotencyKey,
     });
 
-    const userRef = db.collection('users').doc(userId);
     const redemptionExpiry = admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
     
-    // Update user: set redemption deadline and increment purgatoryVotes (Frozen Votes)
+    // Update user: set redemption deadline, increment purgatoryVotes (Frozen Votes) and ash
     tx.set(userRef, {
       deadlines: { redemptionExpiry },
-      wallet: { purgatoryVotes: admin.firestore.FieldValue.increment(pledgedAmount) }
+      wallet: {
+        purgatoryVotes: admin.firestore.FieldValue.increment(pledgedAmount),
+        ash: admin.firestore.FieldValue.increment(ashAmount),
+      }
     }, { merge: true } as any);
 
     tx.update(sessionRef, {
@@ -123,20 +234,117 @@ export async function handleResolveSession(data: any, context: any) {
 
 export const resolveSession = functions.https.onCall(handleResolveSession);
 
-export async function handleStartSession(data: any, context: any) {
+// ============================================================================
+// SHOP PURCHASE
+// ============================================================================
+
+/**
+ * Purchase a shop item with Obsidian currency
+ * Validates item exists, user has enough Obsidian, and hasn't already purchased the item
+ */
+export async function handlePurchaseShopItem(data: any, context: any) {
   const userId: string = data?.userId;
-  const pledgeAmount: number = data?.pledgeAmount;
-  const durationMinutes: number = data?.durationMinutes || 60;
+  const itemId: string = data?.itemId;
   const idempotencyKey: string = data?.idempotencyKey;
 
-  if (!userId || !pledgeAmount || !idempotencyKey) {
+  if (!userId || !itemId || !idempotencyKey) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters: userId, itemId, idempotencyKey');
+  }
+
+  return db.runTransaction(async (tx) => {
+    // Idempotency check
+    const existingPurchase = await db.collection('shop').doc('purchases').collection('records')
+      .where('userId', '==', userId)
+      .where('itemId', '==', itemId)
+      .limit(1)
+      .get();
+
+    if (!existingPurchase.empty) {
+      return { status: 'already_purchased', purchaseId: existingPurchase.docs[0].id };
+    }
+
+    // Fetch the item from catalog
+    const itemRef = db.collection('shop').doc('catalog').collection('items').doc(itemId);
+    const itemSnap = await tx.get(itemRef);
+
+    if (!itemSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Item not found in catalog');
+    }
+
+    const item = itemSnap.data() as any;
+    if (!item.isAvailable) {
+      throw new functions.https.HttpsError('failed-precondition', 'Item is not currently available');
+    }
+
+    const price = item.price || 0;
+
+    // Fetch user wallet
+    const userRef = db.collection('users').doc(userId);
+    const userSnap = await tx.get(userRef);
+    const userData = userSnap.exists ? userSnap.data() as any : {};
+    const currentObsidian = userData?.wallet?.obsidian || 0;
+
+    if (currentObsidian < price) {
+      throw new functions.https.HttpsError('failed-precondition', `Insufficient Obsidian. Need ${price}, have ${currentObsidian}`);
+    }
+
+    // Deduct obsidian
+    tx.set(userRef, {
+      wallet: { obsidian: admin.firestore.FieldValue.increment(-price) }
+    }, { merge: true } as any);
+
+    // Record purchase
+    const purchaseRef = db.collection('shop').doc('purchases').collection('records').doc();
+    tx.set(purchaseRef, {
+      purchaseId: purchaseRef.id,
+      userId,
+      itemId,
+      itemName: item.name || '',
+      pricePaid: price,
+      purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+      idempotencyKey,
+    });
+
+    // Ledger entry
+    const ledgerRef = db.collection('ledger').doc();
+    tx.set(ledgerRef, {
+      entryId: ledgerRef.id,
+      kind: 'obsidian_spend',
+      userId,
+      amount: price,
+      metadata: { itemId, itemName: item.name, purchaseId: purchaseRef.id },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      idempotencyKey,
+    });
+
+    return { status: 'purchased', purchaseId: purchaseRef.id, itemName: item.name, pricePaid: price };
+  });
+}
+
+export const purchaseShopItem = functions.https.onCall(handlePurchaseShopItem);
+
+export async function handleStartSession(data: any, context: any) {
+  const userId: string = data?.userId;
+  const pledgeAmount: number = data?.pledgeAmount ?? 0;
+  const durationMinutes: number = data?.durationMinutes || 60;
+  const idempotencyKey: string = data?.idempotencyKey;
+  const sessionType: string = data?.type || 'PLEDGE';
+
+  if (!userId || !idempotencyKey) {
     throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters');
+  }
+
+  if (sessionType !== 'PLEDGE' && sessionType !== 'REDEMPTION') {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid session type. Must be PLEDGE or REDEMPTION');
+  }
+
+  if (sessionType === 'PLEDGE' && !pledgeAmount) {
+    throw new functions.https.HttpsError('invalid-argument', 'pledgeAmount required for PLEDGE sessions');
   }
 
   const sessionsRef = db.collection('sessions');
   const sessionId = `${userId}_${Date.now()}`;
   const sessionRef = sessionsRef.doc(sessionId);
-  const ledgerRef = db.collection('ledger').doc();
 
   return db.runTransaction(async (tx) => {
     // Idempotency: ensure no existing session with same idempotencyKey for this user
@@ -144,6 +352,49 @@ export async function handleStartSession(data: any, context: any) {
     if (!q.empty) {
       return { status: 'already_started', sessionId: q.docs[0].id };
     }
+
+    const userRef = db.collection('users').doc(userId);
+    const userSnap = await tx.get(userRef);
+
+    if (sessionType === 'REDEMPTION') {
+      // Validate: user must have an active redemption window
+      const userData = userSnap.exists ? userSnap.data() : null;
+      const redemptionExpiry = userData?.deadlines?.redemptionExpiry;
+
+      if (!redemptionExpiry) {
+        throw new functions.https.HttpsError('failed-precondition', 'No active redemption window');
+      }
+
+      const expiryDate = redemptionExpiry.toDate ? redemptionExpiry.toDate() : new Date(redemptionExpiry);
+      if (expiryDate < new Date()) {
+        throw new functions.https.HttpsError('failed-precondition', 'Redemption window has expired');
+      }
+
+      // Validate: user must have purgatoryVotes > 0
+      const purgatoryVotes = userData?.wallet?.purgatoryVotes || 0;
+      if (purgatoryVotes <= 0) {
+        throw new functions.https.HttpsError('failed-precondition', 'No Frozen Votes to redeem');
+      }
+
+      // No credits are locked for redemption sessions
+      tx.set(sessionRef, {
+        sessionId,
+        userId,
+        type: 'REDEMPTION',
+        status: 'ACTIVE',
+        pledgeAmount: 0,
+        durationMinutes,
+        startTime: admin.firestore.FieldValue.serverTimestamp(),
+        native: {},
+        settlement: {},
+        idempotencyKey,
+      });
+
+      return { status: 'started', sessionId };
+    }
+
+    // PLEDGE session flow (existing logic)
+    const ledgerRef = db.collection('ledger').doc();
 
     // Compute derived balance by aggregating ledger entries for the user.
     // If no ledger entries exist, fall back to the stored `users.wallet.credits` value.
@@ -156,8 +407,6 @@ export async function handleStartSession(data: any, context: any) {
       if (e.kind === 'credits_burn' || e.kind === 'credits_lock') derivedCredits -= amt;
     });
 
-    const userRef = db.collection('users').doc(userId);
-    const userSnap = await tx.get(userRef);
     const reportedCredits = userSnap.exists ? (userSnap.data()?.wallet?.credits || 0) : 0;
 
     if (ledgerSnap.empty) {

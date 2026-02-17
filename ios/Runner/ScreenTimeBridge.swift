@@ -65,7 +65,9 @@ class ScreenTimeBridge {
         do {
             let data = try JSONEncoder().encode(appSelection)
             storage.saveBlockedAppsSelection(data)
-            print("[ScreenTimeBridge] Saved app selection: \(appSelection.applicationTokens.count) apps, \(appSelection.categoryTokens.count) categories")
+            print(
+                "[ScreenTimeBridge] Saved app selection: \(appSelection.applicationTokens.count) apps, \(appSelection.categoryTokens.count) categories"
+            )
         } catch {
             print("[ScreenTimeBridge] Error saving app selection: \(error)")
         }
@@ -129,7 +131,9 @@ class ScreenTimeBridge {
 
         do {
             try center.startMonitoring(activityName, during: schedule, events: events)
-            print("[ScreenTimeBridge] Monitoring started for session: \(sessionId), duration: \(durationMinutes)m")
+            print(
+                "[ScreenTimeBridge] Monitoring started for session: \(sessionId), duration: \(durationMinutes)m"
+            )
         } catch {
             print("[ScreenTimeBridge] Error starting monitoring: \(error)")
             // Continue — shields still apply directly
@@ -148,7 +152,9 @@ class ScreenTimeBridge {
         let activeSessionId = storage.getActiveSessionId()
 
         guard activeSessionId == sessionId else {
-            print("[ScreenTimeBridge] Session mismatch: requested \(sessionId), active is \(activeSessionId ?? "none")")
+            print(
+                "[ScreenTimeBridge] Session mismatch: requested \(sessionId), active is \(activeSessionId ?? "none")"
+            )
             return false
         }
 
@@ -216,14 +222,17 @@ class ScreenTimeBridge {
     /// Re-apply shielding if there's an active session (for app relaunch scenarios)
     func reconcileOnLaunch() {
         guard let sessionId = storage.getActiveSessionId(),
-              let endTime = storage.getSessionEndTime(),
-              endTime > Date() else {
+            let endTime = storage.getSessionEndTime(),
+            endTime > Date()
+        else {
             // No active session or session expired — clean up
             removeShields()
             return
         }
 
-        print("[ScreenTimeBridge] Reconciling: active session \(sessionId) found, re-applying shields")
+        print(
+            "[ScreenTimeBridge] Reconciling: active session \(sessionId) found, re-applying shields"
+        )
 
         if let selectionData = storage.getBlockedAppsSelection() {
             do {

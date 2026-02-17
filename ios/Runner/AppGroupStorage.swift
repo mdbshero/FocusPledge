@@ -29,13 +29,15 @@ class AppGroupStorage {
 
     func getSessionStartTime() -> Date? {
         guard let timestamp = userDefaults?.double(forKey: "focuspledge_session_start_time"),
-              timestamp > 0 else { return nil }
+            timestamp > 0
+        else { return nil }
         return Date(timeIntervalSince1970: timestamp)
     }
 
     func getSessionEndTime() -> Date? {
         guard let timestamp = userDefaults?.double(forKey: "focuspledge_session_end_time"),
-              timestamp > 0 else { return nil }
+            timestamp > 0
+        else { return nil }
         return Date(timeIntervalSince1970: timestamp)
     }
 
@@ -62,13 +64,16 @@ class AppGroupStorage {
         userDefaults?.synchronize()
     }
 
-    func checkSessionFailed() -> (failed: Bool, reason: String?, timestamp: Date?, appBundleId: String?) {
+    func checkSessionFailed() -> (
+        failed: Bool, reason: String?, timestamp: Date?, appBundleId: String?
+    ) {
         let failed = userDefaults?.bool(forKey: "focuspledge_session_failed") ?? false
         let reason = userDefaults?.string(forKey: "focuspledge_failure_reason")
         let timestamp = userDefaults?.double(forKey: "focuspledge_failure_timestamp")
         let appBundleId = userDefaults?.string(forKey: "focuspledge_failure_app_bundle_id")
 
-        let date = timestamp != nil && timestamp! > 0 ? Date(timeIntervalSince1970: timestamp!) : nil
+        let date =
+            timestamp != nil && timestamp! > 0 ? Date(timeIntervalSince1970: timestamp!) : nil
         return (failed, reason, date, appBundleId)
     }
 
@@ -89,14 +94,17 @@ class AppGroupStorage {
 
     func getAllState() -> [String: Any] {
         return [
-            "activeSessionId": userDefaults?.string(forKey: "focuspledge_active_session_id") ?? NSNull(),
+            "activeSessionId": userDefaults?.string(forKey: "focuspledge_active_session_id")
+                ?? NSNull(),
             "sessionStartTime": userDefaults?.double(forKey: "focuspledge_session_start_time") ?? 0,
             "sessionEndTime": userDefaults?.double(forKey: "focuspledge_session_end_time") ?? 0,
             "sessionFailed": userDefaults?.bool(forKey: "focuspledge_session_failed") ?? false,
             "failureReason": userDefaults?.string(forKey: "focuspledge_failure_reason") ?? NSNull(),
             "failureTimestamp": userDefaults?.double(forKey: "focuspledge_failure_timestamp") ?? 0,
-            "failureAppBundleId": userDefaults?.string(forKey: "focuspledge_failure_app_bundle_id") ?? NSNull(),
-            "hasBlockedAppsSelection": userDefaults?.data(forKey: "focuspledge_blocked_apps_selection") != nil,
+            "failureAppBundleId": userDefaults?.string(forKey: "focuspledge_failure_app_bundle_id")
+                ?? NSNull(),
+            "hasBlockedAppsSelection": userDefaults?.data(
+                forKey: "focuspledge_blocked_apps_selection") != nil,
         ]
     }
 }
