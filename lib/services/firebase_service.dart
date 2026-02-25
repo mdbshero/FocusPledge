@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// Firebase initialization and configuration
 class FirebaseService {
@@ -11,6 +13,8 @@ class FirebaseService {
   static FirebaseAuth get auth => FirebaseAuth.instance;
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;
   static FirebaseFunctions get functions => FirebaseFunctions.instance;
+  static FirebaseAnalytics get analytics => FirebaseAnalytics.instance;
+  static FirebaseCrashlytics get crashlytics => FirebaseCrashlytics.instance;
 
   /// Initialize Firebase with appropriate configuration
   static Future<void> initialize() async {

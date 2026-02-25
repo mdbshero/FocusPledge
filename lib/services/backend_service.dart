@@ -128,11 +128,9 @@ class BackendService {
         idempotencyKey ??
         'shop_${itemId}_${DateTime.now().millisecondsSinceEpoch}';
 
-    final result =
-        await _functions.httpsCallable('handlePurchaseShopItem').call({
-      'itemId': itemId,
-      'idempotencyKey': key,
-    });
+    final result = await _functions
+        .httpsCallable('handlePurchaseShopItem')
+        .call({'itemId': itemId, 'idempotencyKey': key});
 
     return result.data as Map<String, dynamic>;
   }

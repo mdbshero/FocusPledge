@@ -101,7 +101,7 @@ class _RedemptionSetupScreenState extends ConsumerState<RedemptionSetupScreen> {
               // Check if redemption window is still valid
               final now = DateTime.now();
               final hasValidWindow = expiry != null && now.isBefore(expiry);
-              final remaining = hasValidWindow ? expiry!.difference(now) : null;
+              final remaining = hasValidWindow ? expiry.difference(now) : null;
 
               if (!hasValidWindow) {
                 return _ExpiredView(theme: theme);

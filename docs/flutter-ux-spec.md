@@ -2,9 +2,9 @@
 
 **Document purpose:** Comprehensive screen-by-screen UX specification with state transitions, skill-first copy guidelines, and anti-gambling framing compliance.
 
-**Last updated:** February 17, 2026
+**Last updated:** February 26, 2026
 
-**Implementation status:** Core screens implemented (auth, wallet, buy credits, pledge setup, active session with Pulse countdown). Session setup now wires to native Screen Time. Active session includes failure polling and auto-resolution.
+**Implementation status:** All core screens implemented. Auth (Apple Sign-In + anonymous), wallet, buy credits (Stripe payment sheet), pledge setup, active session with Pulse countdown, redemption setup, shop, dashboard home, onboarding (3-page flow), settings (full implementation). Tab navigation via `StatefulShellRoute` with 4 branches (Home, Wallet, Shop, Settings). Analytics + Crashlytics integrated. Session setup wires to native Screen Time. Active session includes failure polling and auto-resolution.
 
 ---
 

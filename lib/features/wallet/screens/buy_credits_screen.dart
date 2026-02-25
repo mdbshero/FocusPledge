@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import '../../../services/backend_service.dart';
+import '../../../services/analytics_service.dart';
 
 /// Credits pack configurations
 enum CreditsPack {
@@ -48,6 +50,11 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
     try {
       // Call Cloud Function to create Stripe PaymentIntent
       final packId = pack.name.toLowerCase().replaceAll(' ', '_');
+      AnalyticsService.logPurchaseStart(
+        packId: packId,
+        priceUsd: pack.priceUsd,
+        credits: pack.credits,
+      );
       final result = await BackendService.createCreditsPurchaseIntent(
         packId: packId,
         idempotencyKey: 'mobile_${DateTime.now().millisecondsSinceEpoch}',
@@ -55,22 +62,51 @@ class _BuyCreditsScreenState extends ConsumerState<BuyCreditsScreen> {
 
       final clientSecret = result['clientSecret'] as String;
 
-      // TODO: Present Stripe payment sheet (requires flutter_stripe package)
-      // For now, show success message
+      // Initialize Stripe payment sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'FocusPledge',
+          style: ThemeMode.system,
+        ),
+      );
+
+      // Present the payment sheet
+      await Stripe.instance.presentPaymentSheet();
+
+      // Payment succeeded
       if (mounted) {
+        AnalyticsService.logPurchaseComplete(
+          packId: packId,
+          priceUsd: pack.priceUsd,
+          credits: pack.credits,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Payment intent created! Client secret: ${clientSecret.substring(0, 20)}...',
-            ),
+            content: Text('${pack.credits} Focus Credits purchased!'),
             backgroundColor: Colors.green,
           ),
         );
+        // Pop back to wallet screen after successful purchase
+        Navigator.of(context).pop();
       }
 
       setState(() {
         _isLoading = false;
       });
+    } on StripeException catch (e) {
+      // User cancelled or Stripe error
+      if (e.error.code == FailureCode.Canceled) {
+        // User cancelled — not an error
+        setState(() {
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = e.error.localizedMessage ?? 'Payment failed';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Purchase failed: ${e.toString()}';

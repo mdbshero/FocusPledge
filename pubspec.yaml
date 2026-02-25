@@ -36,12 +36,24 @@ dependencies:
   firebase_auth: ^5.3.4
   cloud_firestore: ^5.5.1
   cloud_functions: ^5.2.1
+  firebase_analytics: ^11.4.2
+  firebase_crashlytics: ^4.3.2
 
   # State Management
   flutter_riverpod: ^2.6.1
 
   # Routing
   go_router: ^14.6.2
+
+  # Auth
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
+
+  # Payments
+  flutter_stripe: ^11.3.0
+
+  # Storage
+  shared_preferences: ^2.3.4
 
   # UI
   cupertino_icons: ^1.0.8

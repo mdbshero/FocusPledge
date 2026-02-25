@@ -1,7 +1,7 @@
 # Backend Implementation Status
 
-**Last updated:** February 17, 2026  
-**Status:** Core backend complete, Firebase emulator integration verified, Flutter UI wired to all Cloud Functions
+**Last updated:** February 26, 2026  
+**Status:** Core backend complete, Firebase emulator integration verified, Flutter UI wired to all Cloud Functions, Flutter-side observability configured
 
 ---
 
@@ -270,20 +270,23 @@ Background jobs:
 - ✅ **Firebase Emulator Integration** (Feb 16) — Fixed SIGABRT crash, emulators verified working
 - ✅ **iOS Screen Time Extension** (Feb 17) — DeviceActivity Monitor extension + ManagedSettings shielding
 - ✅ **Session Failure Polling** (Feb 17) — Flutter polls native side every 5s, auto-calls resolveSession(FAILURE)
+- ✅ **Redemption Session Support** (Feb 21) — `type: REDEMPTION` in startSession/resolveSession, rescue/burn Frozen Votes
+- ✅ **Shop Purchase Function** (Feb 21) — `handlePurchaseShopItem` Cloud Function, shop UI, Obsidian deduction
+- ✅ **Flutter Observability** (Feb 25) — `AnalyticsService` with 20+ event types, `FirebaseCrashlytics` integration, GoRouter navigation observer
+- ✅ **Apple Sign-In** (Feb 25) — Full nonce-based OAuth flow with `sign_in_with_apple` package
+- ✅ **Stripe Payment Sheet** (Feb 25) — `flutter_stripe` package, native payment sheet presentation
+- ✅ **Tab Navigation + Dashboard** (Feb 25) — `StatefulShellRoute` with 4 tabs, dashboard home screen
+- ✅ **Onboarding Flow** (Feb 25) — 3-page onboarding with Screen Time permission request
+- ✅ **Settings Screen** (Feb 25) — Full settings with account, Screen Time, sign-out
 
 ### Upcoming
 
-- **Redemption Session Support** (Feb 23)
-  - `type: REDEMPTION` flow in `startSession` / `resolveSession`
-  - Redemption-specific settlement logic
-
-- **Shop Purchase Function** (Feb 25)
-  - Server callable: deduct Obsidian, grant cosmetic
-  - Shop catalog schema in Firestore
-
-- **Observability** (Feb 27)
-  - Analytics events + structured logging in Cloud Functions
+- **Cloud Functions Structured Logging** (next)
+  - Structured logging in Cloud Functions (currently console-only)
   - Error alerting configuration
+
+- **Flutter Tests** (next)
+  - Model unit tests, provider tests, widget tests for critical flows
 
 ---
 
@@ -327,7 +330,7 @@ Background jobs:
 
 ---
 
-**Status:** ✅ Backend core complete, Flutter integration wired  
-**Test Coverage:** 21/21 passing  
-**Next Milestone:** Redemption session support + shop purchase function  
-**Target:** On-device Screen Time testing, then App Store submission prep (early March)
+**Status:** ✅ Backend core complete, Flutter product features mostly done, observability configured  
+**Test Coverage:** 21/21 passing (Cloud Functions)  
+**Next Milestone:** Flutter tests + on-device Screen Time validation + Cloud Functions structured logging  
+**Target:** On-device Screen Time testing, then App Store submission prep (mid-March)

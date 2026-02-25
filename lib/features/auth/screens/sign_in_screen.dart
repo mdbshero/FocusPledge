@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../services/analytics_service.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -22,6 +23,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     try {
       final authService = ref.read(authServiceProvider);
       await authService.signInAnonymously();
+      AnalyticsService.logSignIn(method: 'anonymous');
       // Navigation handled by router redirect
     } catch (e) {
       setState(() {
@@ -40,12 +42,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     try {
       final authService = ref.read(authServiceProvider);
       await authService.signInWithApple();
+      AnalyticsService.logSignIn(method: 'apple');
       // Navigation handled by router redirect
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Apple Sign-In not yet implemented';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 

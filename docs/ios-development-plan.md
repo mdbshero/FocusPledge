@@ -4,10 +4,12 @@
 
 **Audience**: a mixed team of humans + AI agents. Each task is labeled with who can reliably complete it.
 
+**Last updated:** February 26, 2026
+
 **Guardrails (non-negotiable)**
 
 - **Security first**: balances and session settlement are **server-authoritative** (Firebase Cloud Functions). The Flutter client never performs economy math.
-- **Skill-first / no gambling framing**: avoid “Bet”, “Gamble”, “Wager”, “Odds”, “Jackpot”, “Win money” in UI and code. Use “Pledge”, “Commitment”, “Credits”, “Outcome”, “Redemption”.
+- **Skill-first / no gambling framing**: avoid "Bet", "Gamble", "Wager", "Odds", "Jackpot", "Win money" in UI and code. Use "Pledge", "Commitment", "Credits", "Outcome", "Redemption".
 - **Closed-loop arcade economy**: users buy **Focus Credits (FC)** packs; FC/Ash/Obsidian are **non-redeemable** in-app currencies (no cash-out, no withdrawals).
 - **Auditability**: all balance changes are immutable ledger entries; balances are derived on the server.
 - **Anti-cheat**: session state persists on the server; failure can occur even if the app is terminated.
@@ -15,1196 +17,652 @@
 
 ---
 
-## Recent updates
+## Progress Summary
+
+### ✅ Phase 1 — Foundations (COMPLETE)
+
+- ✅ Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`
+- ✅ Flutter app architecture with feature-based folder structure (auth, wallet, session, shop, settings)
+- ✅ Routing configuration using go_router with authentication guards
+- ✅ State management setup using Riverpod
+- ✅ Firebase integration (Auth, Firestore, Functions) with emulator support
+- ✅ Application theme with skill-first color palette (avoiding gambling aesthetics)
+- ✅ Core data models (Wallet, Session, SessionStatus, SessionType, ShopItem, ShopPurchase)
+- ✅ Firebase project setup guide with dev/staging/prod environment configuration
+- ✅ Firestore Security Rules enforcing server-authoritative economy (15 test cases)
+- ✅ Forbidden-terms scanner and CI workflow
+
+### ✅ Phase 2 — Phoenix Protocol Economy + Session Engine (COMPLETE)
+
+- ✅ Cloud Functions (TypeScript): `startSession`, `resolveSession`, `heartbeatSession`
+- ✅ Hardened `startSession`: ledger-driven balance checks, idempotency guards, atomic wallet updates
+- ✅ `resolveSession()` with purgatoryVotes increment, redemptionExpiry deadline, full idempotency
+- ✅ Incremental + full reconciliation jobs (materializes `users.wallet.credits` from `ledger/*`)
+- ✅ Stripe webhook handler (`handleStripeWebhook`) with signature verification, dual idempotency
+- ✅ Credits purchase intent (`createCreditsPurchaseIntent`) with pack configuration (starter/standard/value/premium)
+- ✅ Scheduled session expiry job (`expireStaleSessionsScheduled`) — auto-resolves stale sessions every 5 minutes
+- ✅ `handleStartSession` updated for `type: REDEMPTION` — validates expiry + purgatoryVotes
+- ✅ `handleResolveSession` REDEMPTION branches (rescue votes / ash→obsidian on SUCCESS, burn votes on FAILURE)
+- ✅ `handlePurchaseShopItem` Cloud Function — validates item, checks Obsidian, deducts currency, records purchase
+- ✅ All backend tests passing: **21/21** (session management, Stripe, reconciliation, expiry)
+
+### ✅ Phase 3 — iOS Screen Time Enforcement (CODE COMPLETE — needs on-device testing)
+
+- ✅ MethodChannel scaffold with 7 core methods (auth/picker/start/stop/check/status/debug)
+- ✅ App Group configuration (`group.com.focuspledge.shared`)
+- ✅ AppGroupStorage.swift shared helper singleton
+- ✅ FocusPledgeMonitor DeviceActivity extension (PBXNativeTarget, embedded in Runner.app/PlugIns/)
+- ✅ ScreenTimeBridge.swift: startSession → App Group → DeviceActivityCenter → ManagedSettings shields
+- ✅ Violation flagging: extension writes sessionFailed + reason + appBundleId to App Group
+- ✅ Flutter polling: 5-second failure check → auto resolveSession(FAILURE) when violation detected
+- ✅ AppDelegate.swift reconcileOnLaunch() for re-applying shields after app kill/relaunch
+- ✅ Extension .appex embedded in app bundle (verified)
+- ⚠️ **PENDING: On-device testing** — DeviceActivity/ManagedSettings/FamilyControls only work on real hardware, not simulator
+
+### ✅ Phase 4 — Product Features (MOSTLY COMPLETE)
+
+- ✅ Authentication flow with Apple Sign-In + anonymous auth
+- ✅ Wallet screen with live Firestore streaming, all balances, redemption deadline warnings
+- ✅ Buy Credits UI with 4-tier pack picker (Starter/Standard/Value/Premium)
+- ✅ Pledge setup screen with amount/duration selection and validation
+- ✅ Active session "Pulse" screen with countdown timer, heartbeat, completion flow
+- ✅ Session state streaming and real-time Firestore updates
+- ✅ Animated completion screens (success: credits returned; failure: Ash/Frozen Votes + redemption countdown)
+- ✅ RedemptionSetupScreen with expiry countdown, stake display, duration picker, outcomes card
+- ✅ Full shop UI with category-grouped grid, rarity badges, owned state, purchase confirmation
+- ✅ BackendService.dart wiring (Flutter UI ↔ all Cloud Functions)
+- ✅ Apple Sign-In (`sign_in_with_apple` + `crypto` packages, nonce-based OAuth flow)
+- ✅ Stripe payment sheet (`flutter_stripe` package, init + present payment sheet, success/cancel/error handling)
+- ✅ Tab navigation with `StatefulShellRoute.indexedStack` + `NavigationBar` (Home, Wallet, Shop, Settings)
+- ✅ Dashboard / home screen (greeting, wallet summary card, quick actions, redemption warning, Focus Cycle explainer)
+- ✅ Onboarding flow (3 pages: Welcome → How It Works → Screen Time Permission, with skip + `shared_preferences` persistence)
+- ✅ Settings screen (account info, Apple account linking for guests, Screen Time permission status, blocked apps management, sign-out)
+- ✅ Analytics service (`firebase_analytics` + `firebase_crashlytics`, 20+ event types, GoRouter navigation observer)
+
+### 🟡 Remaining Work — What Still Needs to Be Done
+
+#### Critical (App Store Blockers)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Apple Sign-In implementation** | ✅ Done | `sign_in_with_apple` + `crypto` packages. Nonce-based OAuth flow in `auth_provider.dart`. Display name update on first sign-in. |
+| **Stripe payment sheet connection** | ✅ Done | `flutter_stripe` package. `buy_credits_screen.dart` initializes + presents Stripe payment sheet. Handles success, cancellation, and errors. Analytics events for purchase flow. |
+| **On-device Screen Time testing** | ❌ Not done | All Screen Time code is built but only tested on simulator (where it's a no-op). Must validate shielding, violation detection, and reconcileOnLaunch on a real iPhone. |
+
+#### High Priority (Required for Shippable Product)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Onboarding / first-run flow** | ✅ Done | 3-page PageView: Welcome → How It Works → Screen Time Permission. `shared_preferences` first-launch detection. Skip button + `onboardingCompleteProvider` in router. |
+| **Tab navigation / shell route** | ✅ Done | `StatefulShellRoute.indexedStack` with 4 branches + `NavigationBar` (Home, Wallet, Shop, Settings). `ShellScreen` widget. Nested routes under wallet branch. |
+| **Settings screen** | ✅ Done | Account info with avatar, Apple account linking for guests, Screen Time permission status + enable button, blocked apps management, sign-out with confirmation dialog. |
+| **Analytics & crash reporting** | ✅ Done (Flutter) | `AnalyticsService` with 20+ event methods. `FirebaseCrashlytics` in `main.dart`. `FirebaseAnalyticsObserver` on GoRouter. Cloud Functions structured logging still needed. |
+| **Flutter tests** | ❌ Not started | Only `test/widget_test.dart` exists — it's the default Flutter counter test (stale/broken). Need: model unit tests, provider tests, widget tests for critical flows. |
+| **Dashboard / home screen** | ✅ Done | `DashboardScreen` with time-based greeting, wallet summary card, quick action cards, redemption warning banner, Focus Cycle explainer. |
+
+#### Medium Priority (Polish & Completeness)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Session history view** | ❌ Not built | No way to view past sessions. Need a list of completed/failed sessions with details. |
+| **Transaction/ledger history** | ❌ Not built | Wallet shows balances but no transaction history. |
+| **Push notifications** | ❌ Not started | No session reminders, redemption deadline warnings, or completion alerts. Requires APNs setup. |
+| **Offline support / error handling** | ❌ Not started | No connectivity detection, no cached state, no graceful degradation. |
+| **Shared/reusable widgets** | ❌ Empty | `lib/shared/widgets/` and `lib/shared/utils/` are empty directories. |
+
+#### Release (Pre-Submission)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Privacy policy** | ❌ Not started | Screen Time usage disclosure, data collection, payment policies |
+| **Terms of service** | ❌ Not started | Closed-loop economy disclosures, skill-first framing |
+| **App Store metadata** | ❌ Not started | Description, keywords, categories, age rating, screenshots |
+| **Production Firebase project** | ❌ Not started | IAM, rules deployment, secrets |
+| **Production Stripe keys** | ❌ Not started | Switch from test to production, configure webhook endpoints |
+| **TestFlight build** | ❌ Not started | Build settings, versioning, release checklist |
+
+---
+
+## Completed Work Log
 
 ### January 28, 2026
 
-**Backend implementation (all complete):**
-
-- Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`.
-- Added a forbidden-terms scanner and CI workflow to fail on gambling-related copy.
-- Cloud Functions (TypeScript) scaffold created; implemented `startSession`, `resolveSession`, and `heartbeatSession` handlers.
-- Hardened `startSession`: ledger-driven balance checks, idempotency guards, and atomic wallet updates to prevent double-spend.
-- **✅ COMPLETE: `resolveSession()` implementation** with purgatoryVotes (Frozen Votes) increment on failure, redemptionExpiry deadline, and full idempotency.
-- Added an incremental reconciliation job (paged) and a full reconcile job that materializes `users.wallet.credits` from `ledger/*`.
-- Wrote extensive Firestore-emulator integration tests (start/heartbeat, resolveSession idempotency, reconcile) and verified locally — **11/11 tests passing**.
-- Added GitHub Actions workflow to run the Functions emulator tests and a README CI badge.
-- **✅ COMPLETE: Stripe webhook handler** (`handleStripeWebhook`) with signature verification, dual idempotency (event ID + PaymentIntent ID), and transaction-based fulfillment. Handles `payment_intent.succeeded`, `payment_intent.payment_failed`, and `payment_intent.canceled` events.
-- **✅ COMPLETE: Credits purchase intent** (`createCreditsPurchaseIntent`) callable function with pack configuration (starter/standard/value/premium), client idempotency support, and PaymentIntent storage.
-- **✅ COMPLETE: Scheduled session expiry job** (`expireStaleSessionsScheduled`) that auto-resolves ACTIVE sessions with stale heartbeats (>10min grace period) as FAILURE with `no_heartbeat` reason. Runs every 5 minutes, processes 50 sessions per batch.
-- **All backend core functionality complete**: 21/21 tests passing across session management, Stripe integration, reconciliation, and expiry automation.
-
-**Specification documents (all complete):**
-
-- **✅ COMPLETE: Stripe integration specification** with pack SKUs, PaymentIntent flow, webhook handler design, and dual idempotency strategy.
-- **✅ COMPLETE: iOS native bridge specification** with MethodChannel API, App Group configuration, polling mechanism, and state reconciliation patterns.
-- **✅ COMPLETE: Flutter UX specification** with comprehensive screen-by-screen flows, state transitions, and skill-first copy guidelines.
-- **✅ COMPLETE: Repository scaffolding checklist** with step-by-step Firebase setup, dependency management, and local development environment configuration.
+- Repository initialized and pushed to GitHub: `mdbshero/FocusPledge`
+- Forbidden-terms scanner and CI workflow added
+- Cloud Functions scaffold: `startSession`, `resolveSession`, `heartbeatSession`
+- Hardened `startSession`: ledger-driven balance checks, idempotency, atomic wallet updates
+- `resolveSession()` with purgatoryVotes, redemptionExpiry, full idempotency
+- Incremental + full reconciliation jobs
+- 11/11 emulator integration tests passing
+- GitHub Actions workflow + README CI badge
+- Stripe webhook handler with signature verification, dual idempotency
+- Credits purchase intent with pack configuration
+- Scheduled session expiry job (5-min interval, 50 sessions/batch)
+- All specification documents completed (Stripe, iOS native bridge, Flutter UX, repo scaffolding)
 
 ### January 29, 2026
 
-**Infrastructure & Architecture:**
+- Firebase project setup guide (dev/staging/prod)
+- Flutter app architecture (feature-based folder structure)
+- Routing (go_router) + authentication guards
+- Riverpod state management
+- Firebase integration with emulator support
+- Application theme (skill-first color palette)
+- Core data models (Wallet, Session, SessionStatus, SessionType)
+- Firestore Security Rules + 15 test cases
+- Placeholder screens for all main features
 
-- ✅ COMPLETE: Firebase project setup guide with dev/staging/prod environment configuration, secrets management, and deployment instructions
-- ✅ COMPLETE: Flutter app architecture with feature-based folder structure (auth, wallet, session, shop, settings)
-- ✅ COMPLETE: Routing configuration using go_router with authentication guards
-- ✅ COMPLETE: State management setup using Riverpod
-- ✅ COMPLETE: Firebase integration (Auth, Firestore, Functions) with emulator support
-- ✅ COMPLETE: Application theme with skill-first color palette (avoiding gambling aesthetics)
-- ✅ COMPLETE: Core data models (Wallet, Session, SessionStatus, SessionType)
-- ✅ COMPLETE: Placeholder screens for all main features
+### February 9–14, 2026
 
-**Security:**
+- Authentication flow (Apple Sign-In stub + anonymous auth)
+- Wallet screen with live Firestore streaming
+- Buy Credits UI (4-tier pack picker + Stripe backend stub)
+- Pledge setup screen (amount/duration selection)
+- Active session "Pulse" screen (countdown, heartbeat, completion)
+- Session state streaming + real-time Firestore updates
+- TypeScript type fixes in Cloud Functions
+- MethodChannel scaffold (7 core methods + App Group config)
+- Platform availability guards for iOS 16+
 
-- ✅ COMPLETE: Firestore Security Rules enforcing server-authoritative economy
-  - Users can read but NOT write wallet balances
-  - Users can read but NOT write ledger entries
-  - Users can read but NOT create sessions directly
-  - Users can only update heartbeat timestamp in sessions
-  - Shop catalog readable by all, writable only by server
-- ✅ COMPLETE: Security Rules test suite (15 test cases covering all collections)
+### February 16–17, 2026
 
-### February 9-14, 2026
-
-**Flutter UI Implementation (Phase 1 - Feb 9-13):**
-
-- ✅ COMPLETE: Authentication flow with Apple Sign-In + anonymous auth support
-- ✅ COMPLETE: Wallet screen with live Firestore streaming, balance display (Credits/Ash/Obsidian/Frozen Votes), and redemption deadline warnings
-- ✅ COMPLETE: Buy Credits UI with 4-tier pack picker (Starter/Standard/Value/Premium) and Stripe payment integration stub
-- ✅ COMPLETE: Pledge setup screen with amount/duration selection and validation
-- ✅ COMPLETE: Active session "Pulse" screen with countdown timer, heartbeat mechanism, and completion flow
-- ✅ COMPLETE: Session state streaming and real-time updates from Firestore
-- ✅ COMPLETE: TypeScript type fixes in Cloud Functions
-
-**iOS Native Bridge (Phase 1 - Feb 14):**
-
-- ✅ COMPLETE: MethodChannel scaffold with 7 core methods implemented:
-  - `requestAuthorization()` - Screen Time permission flow
-  - `getAuthorizationStatus()` - Check current permission state
-  - `presentAppPicker()` - FamilyActivityPicker for app selection
-  - `startSession(sessionId, durationMinutes)` - Initialize monitoring
-  - `stopSession(sessionId)` - Stop monitoring and remove shields
-  - `checkSessionStatus(sessionId)` - Poll for violation flags
-  - `getAppGroupState()` - Debug utility for shared storage
-- ✅ COMPLETE: App Group configuration (`group.com.focuspledge.shared`) for data sharing between app and extensions
-- ✅ COMPLETE: Platform availability guards (@available checks) for iOS 16+ Screen Time APIs
-- ✅ COMPLETE: iOS compilation fixes and Dart code formatting
-
-### February 16-17, 2026
-
-**iOS Native Implementation (Phase 3 — Screen Time Enforcement):**
-
-- ✅ COMPLETE: Firebase emulator integration debugging
-  - Fixed SIGABRT crash from duplicate Firebase initialization (native plugin vs Dart init)
-  - Created GoogleService-Info.plist with emulator config (demo-focuspledge project)
-  - Simplified firebase_service.dart to call Firebase.initializeApp() without custom options
-- ✅ COMPLETE: BackendService.dart wiring (Flutter UI ↔ Cloud Functions)
-  - startSession, heartbeatSession, resolveSession, createCreditsPurchaseIntent
-- ✅ COMPLETE: AppGroupStorage.swift shared helper class
-  - Singleton for read/write to App Group UserDefaults
-  - Methods: setActiveSession, clearActiveSession, markSessionFailed, checkSessionFailed, saveBlockedAppsSelection, getBlockedAppsSelection, getAllState
-  - Added to Xcode project (PBXBuildFile, PBXFileReference, PBXGroup, PBXSourcesBuildPhase)
-- ✅ COMPLETE: FocusPledgeMonitor DeviceActivity extension
-  - Full PBXNativeTarget added to project.pbxproj with Debug/Release/Profile configs
-  - Extension embedded in Runner.app/PlugIns/ via Embed App Extensions build phase
-  - FocusPledgeMonitorExtension.swift: DeviceActivityMonitor subclass with intervalDidStart (apply shields), intervalDidEnd (remove shields), eventDidReachThreshold (flag violation)
-  - Entitlements: Family Controls + App Group (group.com.focuspledge.shared)
-  - Deployment target: iOS 16.0
-- ✅ COMPLETE: ScreenTimeBridge.swift rewrite with real implementation
-  - startSession: writes to App Group → saves app selection → schedules DeviceActivityCenter → applies ManagedSettings shields
-  - stopSession: removes shields → stops monitoring → clears App Group
-  - checkSessionStatus: reads failure flags from App Group
-  - reconcileOnLaunch: re-applies shields if active session exists after app kill/relaunch
-- ✅ COMPLETE: Flutter session lifecycle wiring
-  - SessionSetupScreen: calls ScreenTimeService.startSession() after backend session creation
-  - ActiveSessionScreen: 5-second failure polling timer reads native failure flags via checkSessionStatus()
-  - Auto-resolves session via BackendService.resolveSession(FAILURE) when native violation detected
-  - Stops native session and clears shields on timer expiry
-- ✅ COMPLETE: AppDelegate.swift updated with reconcileOnLaunch() call
-- ✅ COMPLETE: Buy credits screen Row overflow fix (Flexible wrapper)
-- ✅ COMPLETE: App builds and runs on iPhone 16e simulator with Firebase emulators
-- ✅ COMPLETE: Extension .appex embedded in app bundle (verified)
-
-**Note:** DeviceActivity/ManagedSettings/FamilyControls APIs require a real device for functional testing. The app builds on simulator but Screen Time features only activate on hardware.
+- Fixed SIGABRT crash from duplicate Firebase initialization
+- BackendService.dart wiring (all Cloud Functions callable from UI)
+- AppGroupStorage.swift singleton
+- FocusPledgeMonitor DeviceActivity extension (full Xcode target)
+- ScreenTimeBridge.swift rewrite (real implementation)
+- Flutter session lifecycle wiring (native polling + auto-resolve)
+- AppDelegate.swift reconcileOnLaunch()
+- Buy credits Row overflow fix
+- App builds and runs on iPhone 16e simulator with Firebase emulators
 
 ### February 21, 2026
 
-**Completion Screens Polish (Feb 21 schedule — done ahead of schedule):**
+- Animated completion screens (success/failure with transitions)
+- Live countdown timer from `redemptionExpiryProvider`
+- RedemptionSetupScreen (expiry countdown, stake display, duration picker, outcomes card)
+- Route registered: `/session/redemption-setup`
+- `handleStartSession` updated for `type: REDEMPTION`
+- `handleResolveSession` REDEMPTION branches (rescue votes, ash→obsidian, burn votes)
+- BackendService.startRedemptionSession() Flutter wrapper
+- Pledge FAILURE branch now also increments materialized `wallet.ash`
+- ShopItem/ShopPurchase models
+- Shop providers (catalog, purchases, owned items)
+- `handlePurchaseShopItem` Cloud Function
+- Full shop UI (catalog grid, rarity badges, purchase flow)
 
-- ✅ COMPLETE: Animated completion screen with elastic icon animation + fade-in content transitions
-  - Success: green check with credits returned display
-  - Failure: red cancel with Ash earned, Frozen Votes gained, redemption countdown timer
-  - Live countdown timer reading from `redemptionExpiryProvider` (ticks every second)
-  - "Start Redemption Session" CTA button on failure screen navigates to redemption setup
+### February 25, 2026
 
-**Redemption Session UI (Feb 22 schedule — done ahead of schedule):**
+- **Apple Sign-In** — `sign_in_with_apple` + `crypto` packages added; full nonce-based OAuth flow in `auth_provider.dart`; display name update on first sign-in; `signInWithApple()` button on sign-in screen with analytics tracking
+- **Stripe Payment Sheet** — `flutter_stripe` package added; `buy_credits_screen.dart` now initializes + presents native Stripe payment sheet; handles success, user cancellation (`StripeException`), and errors; analytics events for purchase start/complete/cancel
+- **Tab Navigation + Shell Route** — `StatefulShellRoute.indexedStack` with 4 branches (Home, Wallet, Shop, Settings); `ShellScreen` with `NavigationBar`; wallet sub-routes nested (`/wallet/buy-credits`, `/wallet/session/setup`, etc.)
+- **Dashboard / Home Screen** — `DashboardScreen` with time-based greeting, wallet summary card (all 4 balances), quick action cards (Start Session, Buy Credits, Redeem Ash), redemption warning banner with countdown, Focus Cycle explainer
+- **Onboarding Flow** — 3-page `PageView`: Welcome → How It Works → Screen Time Permission; first-launch detection via `shared_preferences`; skip button; `onboardingCompleteProvider` in router redirect logic
+- **Settings Screen** — Full implementation replacing stub: account info with avatar, Apple account linking for guest users, Screen Time permission status + enable button, blocked apps management, version info, terms/privacy placeholders, sign-out with confirmation dialog
+- **Analytics + Crash Reporting** — `AnalyticsService` with 20+ event methods (auth, session, purchase, redemption, shop, onboarding, screen time); `FirebaseCrashlytics` fatal error recording in `main.dart`; `FirebaseAnalyticsObserver` on GoRouter; `FirebaseService` updated with analytics + crashlytics accessors
+- **Packages added:** `sign_in_with_apple`, `crypto`, `flutter_stripe`, `shared_preferences`, `firebase_analytics`, `firebase_crashlytics`
+- Zero compile errors, `flutter analyze --no-fatal-infos` clean
 
-- ✅ COMPLETE: RedemptionSetupScreen with full redemption flow
-  - Live redemption window countdown banner at top
-  - "What's at Stake" card showing current Frozen Votes and Ash balances
-  - Duration picker (15/30/45/60 min presets)
-  - Outcomes card explaining success (rescue votes + ash→obsidian) vs failure (votes lost)
-  - Expired view with messaging when redemption window has passed
-  - "Start Redemption" button added to wallet screen redemption warning banner
-  - Route registered: `/session/redemption-setup`
+---
 
-**Backend: Redemption Session Support (Feb 23 schedule — done ahead of schedule):**
-
-- ✅ COMPLETE: `handleStartSession` updated to accept `type: REDEMPTION`
-  - Validates active `redemptionExpiry` deadline hasn't passed
-  - Validates user has `purgatoryVotes > 0`
-  - No credits locked for redemption sessions (`pledgeAmount: 0`)
-- ✅ COMPLETE: `handleResolveSession` REDEMPTION branches
-  - SUCCESS: rescue Frozen Votes (zero out purgatoryVotes), convert Ash → Obsidian (1:1), clear redemption deadline, ledger entries (`frozen_votes_rescue`, `ash_to_obsidian_conversion`)
-  - FAILURE: burn Frozen Votes permanently (zero out purgatoryVotes), Ash remains, clear redemption deadline, ledger entry (`frozen_votes_burn`)
-- ✅ COMPLETE: BackendService.startRedemptionSession() Flutter wrapper
-- ✅ COMPLETE: Pledge FAILURE branch now also increments materialized `wallet.ash`
-
-**Shop Catalog + Inventory (Feb 24-26 schedule — done ahead of schedule):**
-
-- ✅ COMPLETE: ShopItem model with `ItemRarity` (common/uncommon/rare/legendary) and `ItemCategory` (theme/icon/badge/title) enums
-- ✅ COMPLETE: ShopPurchase model for tracking owned items
-- ✅ COMPLETE: Firestore schema: `shop/catalog/items/{itemId}` + `shop/purchases/records/{purchaseId}`
-- ✅ COMPLETE: `shopCatalogProvider`, `userPurchasesProvider`, `ownedItemIdsProvider` Riverpod providers
-- ✅ COMPLETE: `handlePurchaseShopItem` Cloud Function — validates item availability, checks Obsidian balance, deducts currency, records purchase, posts ledger entry (`obsidian_spend`)
-- ✅ COMPLETE: Full shop UI with category-grouped grid, rarity badges, owned state, Obsidian balance chip, purchase confirmation dialog
-
-**Next:** Observability (analytics + logging), unit tests, integration testing, on-device Screen Time testing
-
-**Backend implementation status:**
-
-- Session lifecycle: ✅ Complete (start/heartbeat/resolve with full idempotency)
-- Stripe integration: ✅ Complete (webhook + purchase intent with dual idempotency)
-- Reconciliation: ✅ Complete (full + incremental paged reconciliation)
-- Scheduled jobs: ✅ Complete (expiry job auto-resolving stale sessions)
-- Tests: ✅ 21/21 passing (11 session tests + 3 Stripe webhook tests + 3 purchase intent validation tests + 4 expiry job tests)
-
-**Specification documents status:**
-
-- iOS native bridge spec: ✅ Complete (Jan 28)
-- Flutter UX spec: ✅ Complete (Jan 28)
-- Stripe integration spec: ✅ Complete (Jan 28)
-- Repo scaffolding checklist: ✅ Complete (Jan 28)
-
-**Next up:** Completion screens polish (Sat Feb 21), redemption session UI (Sun Feb 22), shop implementation (Tue-Thu Feb 24-26), then on-device testing and hardening.
-
-## Terminology (Session 1 alignment)
+## Terminology
 
 - **Approved terms:** Focus Credits (FC), Ash, Obsidian, Frozen Votes, Redemption Session, Pledge Session, Impact Points, Credits pack.
 - **Forbidden terms (do not use in UI or copy):** Bet, Gamble, Wager, Odds, Jackpot, Win money, Prize, Betting.
-- **Tone guideline:** Use "pledge", "commitment", "credits", "outcome", "redemption" — emphasize skill, discipline, and closed-loop economy. Avoid chance/gambling framing anywhere in text or code identifiers that are user-facing.
-- **Currency rule:** `Focus Credits (FC)` are strictly in-app, non-redeemable credits. All balance math must be server-authoritative; client shows derived balances only.
-- **Action:** Audit UI copy and code identifiers for forbidden terms; flag and replace occurrences with approved terminology before iOS submission.
+- **Tone guideline:** Use "pledge", "commitment", "credits", "outcome", "redemption" — emphasize skill, discipline, and closed-loop economy.
+- **Currency rule:** Focus Credits (FC) are strictly in-app, non-redeemable credits. All balance math must be server-authoritative.
 
-### Replacement suggestions
+### Replacement mappings
 
-- **Mapping (user-facing):**
-  - `Bet` / `Gamble` / `Wager` / `Betting` → `Pledge` / `Commitment`
-  - `Odds` / `Win money` / `Prize` / `Jackpot` → `Outcome` / `Result` / `Redemption`
+- **User-facing:** Bet/Gamble/Wager/Betting → Pledge/Commitment | Odds/Win money/Prize/Jackpot → Outcome/Result/Redemption
+- **Code identifiers:** bet_amount/wager/jackpotReward → pledge_amount/commitmentAmount/redemptionReward | Use focusCredits, ashBalance, obsidianBalance, frozenVotes
 
-- **Mapping (code identifiers / internal):**
-  - Avoid identifiers like `bet_amount`, `wager`, `jackpotReward`. Use `pledge_amount`, `commitmentAmount`, `redemptionReward` instead.
-  - Use `focusCredits`, `ashBalance`, `obsidianBalance`, `frozenVotes` for model fields.
+---
 
-- **Suggested workflow:**
-  1. Run a repo-wide search for forbidden terms (done). If matches outside docs are found, create automated replacement PRs limited to testable strings files.
-  2. For UI strings (Dart/ARB/JSON/Plist), prefer human review before bulk replace to avoid changing legal or historical text.
-  3. Add a CI lint rule to fail on forbidden user-facing terms (strings in `lib/`, `assets/`, localization files).
-
-## 0) Assumptions & scope
+## Assumptions & Scope
 
 ### Assumptions
 
 - Target platforms: **iOS first** (iPhone). iPad optional later.
-- In-app economy: **Focus Credits (FC)** are purchased via Stripe.
-  - Reference rate (for internal consistency): **100 FC = $1.00**.
-  - App-facing copy should treat FC as **in-app credits** (closed-loop; non-redeemable).
-- Stripe mode: start in **test mode**, then switch to production after validation.
+- In-app economy: **Focus Credits (FC)** purchased via Stripe. Reference rate: **100 FC = $1.00**.
+- Stripe mode: start in **test mode**, switch to production after validation.
 - Firebase: Auth + Firestore + Cloud Functions + Cloud Scheduler.
 - Screen Time: FamilyControls + DeviceActivity + ManagedSettings.
 
 ### MVP definition (ship-worthy)
 
-1. Sign-in
-2. Purchase Focus Credits packs (Stripe)
-3. Display wallet (read-only client): Credits, Ash, Obsidian, Frozen Votes
-4. Create a pledge session (pledge Credits + duration)
-5. Enforce distraction blocking (Screen Time shielding) during session
-6. Auto-resolve success/failure on server (ledger + Phoenix Protocol outcomes)
-7. Redemption loop: complete a Redemption Session within 24h to rescue Frozen Votes and convert Ash → Obsidian (conversion details TBD)
-8. Basic shop (“Black Market”): buy at least one cosmetic using Obsidian
-9. Minimal analytics + crash reporting
-
-### Timeline style
-
-- Durations are estimates for a focused build (single senior engineer + AI agent assistance).
-- Where tasks depend on external approvals (Apple entitlements / Stripe verification), the plan includes realistic lead times.
+1. ✅ Sign-in (anonymous + Apple Sign-In implemented)
+2. ✅ Purchase Focus Credits packs (backend + Stripe payment sheet connected)
+3. ✅ Display wallet: Credits, Ash, Obsidian, Frozen Votes
+4. ✅ Create a pledge session (pledge Credits + duration)
+5. ✅ Enforce distraction blocking (Screen Time shielding) — **needs on-device testing**
+6. ✅ Auto-resolve success/failure on server (ledger + Phoenix Protocol)
+7. ✅ Redemption loop (Redemption Session within 24h, rescue Frozen Votes, Ash → Obsidian)
+8. ✅ Basic shop: buy cosmetics using Obsidian
+9. ✅ Minimal analytics + crash reporting (Firebase Analytics + Crashlytics configured)
 
 ---
 
-## Firestore schema & invariants (Session 2)
-
-This section defines the minimal Firestore collections and server-enforced invariants for the Phoenix Protocol. Clients may read `users/*` and `sessions/*` but must never write authoritative balance fields — all mutations are performed by Cloud Functions.
+## Firestore Schema & Invariants
 
 Collections (minimal set):
 
-- `users/{uid}` (readable by user)
-  - Fields:
-    - `uid: string`
-    - `wallet: { credits: number, ash: number, obsidian: number, purgatoryVotes: number, lifetimePurchased: number }`
-    - `deadlines: { redemptionExpiry?: timestamp }`
-    - `status: { currentTheme?: string, appIcon?: string }`
-  - Notes: `wallet.*` is derived and only writable by server functions.
+- **`users/{uid}`** (readable by user)
+  - `uid: string`
+  - `wallet: { credits, ash, obsidian, purgatoryVotes, lifetimePurchased }`
+  - `deadlines: { redemptionExpiry?: timestamp }`
+  - `status: { currentTheme?, appIcon? }`
+  - Note: `wallet.*` is derived and only writable by server functions.
 
-- `sessions/{sessionId}`
-  - Fields:
-    - `sessionId`, `userId`, `type` (PLEDGE|REDEMPTION), `status` (ACTIVE|COMPLETED|FAILED)
-    - `pledgeAmount`, `durationMinutes`, `startTime`, `endTime?`
-    - `native: { lastCheckedAt?: timestamp, failureFlag?: bool, failureReason?: string }`
-    - `settlement: { resolvedAt?: timestamp, resolvedBy?: string, resolution?: string, idempotencyKey?: string }`
-  - Notes: sessions are created by `startSession()` callable and settled only via `resolveSession()`.
+- **`sessions/{sessionId}`**
+  - `sessionId`, `userId`, `type` (PLEDGE|REDEMPTION), `status` (ACTIVE|COMPLETED|FAILED)
+  - `pledgeAmount`, `durationMinutes`, `startTime`, `endTime?`
+  - `native: { lastCheckedAt?, failureFlag?, failureReason? }`
+  - `settlement: { resolvedAt?, resolvedBy?, resolution?, idempotencyKey? }`
 
-- `ledger/{entryId}` (immutable event store)
-  - Each ledger entry is append-only and contains: `entryId`, `userId`, `kind` (credits_purchase|credits_lock|credits_burn|credits_refund|ash_grant|obsidian_grant|shop_purchase), `amount`, `metadata`, `createdAt`, `idempotencyKey`
-  - Balances are derived by aggregating `ledger/*` for a user (server-side). `ledger` writes only from Cloud Functions.
+- **`ledger/{entryId}`** (immutable event store)
+  - `entryId`, `userId`, `kind`, `amount`, `metadata`, `createdAt`, `idempotencyKey`
+  - Kinds: `credits_purchase`, `credits_lock`, `credits_burn`, `credits_refund`, `ash_grant`, `obsidian_grant`, `ash_to_obsidian_conversion`, `frozen_votes_rescue`, `frozen_votes_burn`, `obsidian_spend`
 
-- `stripeEvents/{eventId}` (idempotency store)
-  - Stores processed Stripe event IDs to prevent replay double-crediting.
+- **`stripeEvents/{eventId}`** — processed Stripe event IDs (idempotency)
+- **`paymentIntents/{paymentIntentId}`** — pending/fulfilled purchases
+- **`shop/catalog/items/{itemId}`** + **`shop/purchases/records/{purchaseId}`**
+- **`reconcile_state/incremental`** — resume token for paged reconciliation
 
-- `shop/catalog/{itemId}` and `shop/purchases/{purchaseId}` (optional)
+Security invariants:
 
-Security invariants (server-enforced):
-
-- Clients may read their own `users/{uid}` and `sessions/{sessionId}` documents.
-- Clients may NOT write to `users.{wallet.*}` or `ledger/*`.
-- `sessions.status` transitions are monotonic: only `ACTIVE` -> `COMPLETED|FAILED` allowed by server functions.
-- All settlement operations are idempotent and must include an `idempotencyKey`.
-- Any credits that are 'burned' must be recorded in the ledger with `credits_burn` and must reduce derived balance accordingly.
-
-Testing & validation checklist:
-
-- Rules unit tests to verify: client cannot write `wallet.*`, client can only read own `users/*`.
-- Functions unit tests: posting a `credits_purchase` ledger entry updates derived `users.wallet.credits` exactly once (idempotent replay).
-- Integration test: startSession -> simulate native failure -> resolveSession(FAILURE) -> ledger entries and `users.deadlines.redemptionExpiry` set.
-
-## `resolveSession()` settlement spec (Session 2 continuation)
-
-Purpose: single authoritative function to settle sessions. It must be server-only, idempotent, and produce immutable ledger entries that drive derived balances.
-
-Signature (callable):
-
-- `resolveSession(sessionId: string, resolution: 'SUCCESS'|'FAILURE', idempotencyKey: string, reason?: string, nativeEvidence?: object)`
-
-Validations (server):
-
-- Verify `sessions/{sessionId}` exists and is `status: ACTIVE` (if already settled, return idempotent success).
-- Verify `idempotencyKey` has not produced a different settlement for this session.
-- Confirm server-side time indicates session end (compute from `startTime + durationMinutes`) or that a failure was reported by native evidence or scheduler.
-
-State machine (monotonic transitions):
-
-- `ACTIVE` -> `COMPLETED` (on SUCCESS)
-- `ACTIVE` -> `FAILED` (on FAILURE)
-- Any attempt to move `COMPLETED|FAILED` -> other is rejected; subsequent calls with same `idempotencyKey` return existing result.
-
-Ledger & side effects (atomic transaction where possible):
-
-- On SUCCESS:
-  - Append ledger entry: `{ kind: 'credits_refund', userId, amount: pledgedAmount, metadata: { sessionId } , idempotencyKey }`
-  - Optionally append `impact_points_grant` ledger entry if the product awards points.
-  - Update `sessions/{sessionId}.status = COMPLETED`, `settlement.resolvedAt`, `settlement.resolution = SUCCESS`, `settlement.idempotencyKey`.
-
-- On FAILURE:
-  - Append ledger entry: `{ kind: 'credits_burn', userId, amount: pledgedAmount, metadata: { sessionId, reason }, idempotencyKey }`
-  - Append ledger entry: `{ kind: 'ash_grant', userId, amount: ashAmount, metadata: { sessionId }, idempotencyKey }` (if policy awards Ash)
-  - Update `users/{uid}.deadlines.redemptionExpiry = now + 24h` (as a derived field set within the same transaction)
-  - Update `sessions/{sessionId}.status = FAILED`, `settlement.*` as above.
-
-Idempotency rules:
-
-- Use `sessionId` + `idempotencyKey` as the unique key. Store processed keys in `sessions/{sessionId}.settlement.idempotencyKey` and/or a `settlementEvents/{key}` collection.
-- If a `resolveSession` call repeats with same `idempotencyKey`, return prior settlement result (no duplicate ledger writes).
-- If a different `idempotencyKey` is submitted after settlement, reject to prevent conflicting resolutions.
-
-Security & auditability:
-
-- All ledger entries are immutable; never amend an existing ledger entry — only append corrective entries (`admin_correction`) if needed.
-- Settlement callable requires elevated privileges (server SDK) — clients cannot call directly unless via authenticated Callable Functions with server-side checks.
-
-Testing scenarios:
-
-- Idempotency: call `resolveSession` twice with same `idempotencyKey` — verify only one set of ledger entries exists and session status unchanged.
-- Success path: start -> heartbeat -> resolve(SUCCESS) -> credits_refund + session COMPLETED.
-- Failure path (native evidence): start -> native writes failure -> resolve(FAILURE) -> credits_burn + ash_grant + redemptionExpiry set.
-- Replay protection: replay Stripe webhook / scheduler triggers should not double-settle.
-
-Example settlement payload (FAILURE):
-
-```json
-{
-  "sessionId": "sess_001",
-  "resolution": "FAILURE",
-  "idempotencyKey": "settle_sess_001_v1",
-  "reason": "native_violation",
-  "nativeEvidence": {
-    "appBundleId": "com.example.facebook",
-    "timestamp": "..."
-  }
-}
-```
-
-Exit criteria for this spec:
-
-- `resolveSession()` implemented as a Cloud Function that is idempotent, writes ledger entries, updates session status, and sets redemption deadlines on failure. Unit tests cover idempotency and both settlement branches.
-
-### `startSession` and `heartbeat` (added)
-
-- `startSession(userId, pledgeAmount, durationMinutes, idempotencyKey)`
-  - Validations: pledge bounds, sufficient credits (server-validated), unique `idempotencyKey` per user.
-  - Side effects: append immutable ledger entry `credits_lock`; create `sessions/{sessionId}` with `status: ACTIVE` and store `idempotencyKey`.
-
-- `heartbeatSession(sessionId)`
-  - Writes `sessions/{sessionId}.native.lastCheckedAt` with server timestamp to indicate device heartbeat.
-  - The scheduler marks sessions failed when heartbeat is stale beyond grace window.
-
-Tests added (Firestore emulator):
-
-- `startSession` — verifies `sessions/*` created and `ledger` `credits_lock` entry exists.
-- `heartbeat` — verifies `native.lastCheckedAt` is written.
-- Concurrent settlement edge case — resolving with a different `idempotencyKey` after settlement is rejected.
-
-## 1) High-level timeline overview
-
-**Phase 1 — Foundations (Week 1)**
-
-- Repo structure, Flutter architecture skeleton
-- Firebase project + environments (dev/staging/prod)
-- Firestore security model + Cloud Functions scaffolding
-
-**Phase 2 — Phoenix Protocol economy + session engine (Weeks 2–3)**
-
-- Stripe Credits pack purchase pipeline with webhooks
-- Ledger + derived balance updates (Credits/Ash/Obsidian/Votes)
-- Session lifecycle + settlement centered on `resolveSession()`
-
-**Phase 3 — Screen Time enforcement (Weeks 3–5)**
-
-- iOS native plugin + extension targets
-- Authorization flow + app selection UI
-- Shielding + violation detection + server fail
-
-**Phase 4 — Product features (Weeks 5–6)**
-
-- Redemption loop + Obsidian shop cosmetics
-- Blacklist management UX
-- Notifications + session UX polish
-
-**Phase 5 — Hardening + compliance + release (Weeks 6–8)**
-
-- Security review + tests + monitoring
-- Privacy policy + App Store metadata
-- TestFlight → App Store submission
-
-> **Risk note**: Apple Screen Time entitlements/behavior are the biggest schedule risk. Plan for iteration on-device.
+- Clients may read their own `users/{uid}` and `sessions/{sessionId}` documents
+- Clients may NOT write to `users.wallet.*` or `ledger/*`
+- `sessions.status` transitions are monotonic: only `ACTIVE` → `COMPLETED|FAILED`
+- All settlement operations are idempotent with `idempotencyKey`
 
 ---
 
-## 2) Task taxonomy (who can do what)
-
-Tasks are labeled by who can reliably complete them:
+## Task Taxonomy
 
 ### AI-agent-reliable tasks (A)
-
-An AI agent can reliably complete these without human-only credentials/approvals:
 
 - Flutter/Dart implementation and refactors
 - Cloud Functions code (TypeScript) and Firestore rules drafts
 - Unit/integration tests scaffolding
 - Static analysis, linting, formatting
-- Documentation, architecture diagrams (text-based)
+- Documentation
 - CI pipeline configuration
 
 ### Human-required tasks (H)
 
-Requires a person due to credentials, legal judgment, external approvals, or physical device testing:
-
-- Creating/owning Apple Developer account and App Store Connect configuration
-- Requesting/obtaining Screen Time-related entitlements/capabilities (if Apple approval required)
-- Stripe account activation/verification and production key management
+- Apple Developer account and App Store Connect configuration
+- Screen Time entitlements (if Apple approval required)
+- Stripe account activation and production key management
 - Real device testing on multiple iOS versions
-- Legal review: privacy policy/terms, payment disclosures, closed-loop economy disclosures
-- App Store screenshots, marketing copy, and submission
+- Legal review: privacy policy/terms, payment disclosures
+- App Store screenshots, marketing copy, submission
 
 ### Mixed tasks (M)
 
-AI can prepare 80–95%, human completes final steps:
-
 - Firebase project creation + secrets provisioning
-- Stripe dashboard configuration (webhook endpoints) and verifying events
-- App Store Connect setup steps (agent can provide click-by-click checklists)
+- Stripe dashboard configuration (webhook endpoints)
+- App Store Connect setup steps
 
 ---
 
-## 2.5) Daily sessions plan (1–2h/day, starting Sun Jan 25, 2026)
+## Daily Sessions Plan (remaining work)
 
-Designed for solo development with AI agent support. Each day is one coherent work session with a concrete output.
-✅ Functions project skeleton + lint/test + placeholder callable |
-| Mon Feb 2 | ~~Backend: Stripe webhook handler~~ | 1–2h | ✅ Signature verification + dual idempotency + fulfillment (COMPLETE) |
-| Tue Feb 3 | ~~Backend: Credits purchase intent~~ | 1–2h | ✅ Pack config + PaymentIntent creation + idempotency (COMPLETE) |
-| Wed Feb 4 | ~~Backend: `startSession` skeleton~~ | 1–2h | ✅ Validations + credits lock ledger + session doc (COMPLETE) |
-| Thu Feb 5 | ~~Backend: `resolveSession` skeleton~~ | 1–2h | ✅ SUCCESS/FAILURE branches + full idempotency (COMPLETE) |
-| Fri Feb 6 | ~~Backend: scheduler expiry job~~ | 1–2h | ✅ Auto-resolve stale sessions + batch processing (COMPLETE) |
-| Wed Jan 28 | ~~Stripe Credits packs spec~~ | 1–2h | ✅ Pack SKUs + PaymentIntent + webhook + replay safety documented (COMPLETE) |
-| Thu Jan 29 | ~~iOS native bridge spec~~ | 1–2h | ✅ MethodChannel API + App Group keys + polling loop defined (COMPLETE) |
-| Fri Jan 30 | ~~Flutter UX map + copy checklist~~ | 1–2h | ✅ Screen list + UX states + skill-first copy checklist (COMPLETE) |
-| Sat Jan 31 | ~~Repo scaffolding checklist~~ | 1–2h | ✅ Concrete steps to add Firebase/Functions/Stripe deps + local dev flow (COMPLETE) |
-| Sun Feb 1 | ~~Backend: Functions scaffold~~ | 1–2h | Functions project skeleton + lint/test + placeholder callable |
-| Mon Feb 2 | ~~Backend: Stripe webhook skeleton~~ | 1–2h | ✅ Signature verification + dual idempotency + fulfillment (COMPLETE Jan 28) |
-| Tue Feb 3 | ~~Backend: Credits pack fulfillment~~ | 1–2h | ✅ Pack config + PaymentIntent creation + idempotency (COMPLETE Jan 28) |
-| Wed Feb 4 | ~~Backend: `startSession` skeleton~~ | 1–2h | Validations + credits lock ledger stub + session doc |
-| Thu Feb 5 | ~~Backend: `resolveSession` skeleton~~ | 1–2h | SUCCESS/FAILURE branches stubbed + idempotency guard |
-| Fri Feb 6 | ~~Backend: scheduler expiry job~~ | 1–2h | ✅ Auto-resolve stale sessions + batch processing (COMPLETE Jan 28) |
-| Sat Feb 7 | ~~Security rules draft + tests~~ | 1–2h | ✅ Rules draft + comprehensive test suite (COMPLETE Jan 29) |
-| Sun Feb 8 | ~~Flutter: app architecture~~ | 1–2h | ✅ Feature folders + routing + state mgmt baseline (COMPLETE Jan 29) |
-| Mon Feb 9 | ~~Flutter: auth flow~~ | 1–2h | ✅ Sign-in screen with Apple Sign-In + anonymous auth (COMPLETE Feb 9-13) |
-| Tue Feb 10 | ~~Flutter: wallet screen~~ | 1–2h | ✅ Full wallet UI with live Firestore streaming + redemption warnings (COMPLETE Feb 9-13) |
-| Wed Feb 11 | ~~Flutter: buy credits UI~~ | 1–2h | ✅ Credits pack picker (4 tiers) + Stripe backend stub (COMPLETE Feb 9-13) |
-| Thu Feb 12 | ~~Flutter: pledge setup UI~~ | 1–2h | ✅ Pledge amount/duration selection + startSession stub (COMPLETE Feb 9-13) |
-| Fri Feb 13 | ~~Flutter: active session "Pulse"~~ | 1–2h | ✅ Countdown timer + completion screens + state streaming (COMPLETE Feb 9-13) |
-| Sat Feb 14 | ~~iOS: MethodChannel scaffold~~ | 1–2h | ✅ 7 methods wired (auth/picker/start/stop/check/status/debug) + App Group config (COMPLETE Feb 14) |
-| Sun Feb 15 | ~~iOS: App Group storage~~ | 1–2h | ✅ AppGroupStorage.swift singleton + all shared keys + debug viewer (COMPLETE Feb 16) |
-| Mon Feb 16 | ~~iOS: DeviceActivity extension target~~ | 1–2h | ✅ FocusPledgeMonitor extension target in Xcode + monitoring callbacks (COMPLETE Feb 17) |
-| Tue Feb 17 | ~~iOS: shielding apply/remove~~ | 1–2h | ✅ ManagedSettingsStore shields applied/removed in ScreenTimeBridge + extension (COMPLETE Feb 17) |
-| Wed Feb 18 | ~~iOS: violation flagging~~ | 1–2h | ✅ Extension writes sessionFailed + reason + appBundleId to App Group (COMPLETE Feb 17) |
-| Thu Feb 19 | ~~Flutter: native polling + fail reconcile~~ | 1–2h | ✅ 5s polling timer + auto resolveSession(FAILURE) + native stop (COMPLETE Feb 17) |
-| Fri Feb 20 | ~~Backend: end-to-end settle path~~ | 1–2h | ✅ resolveSession already writes wallet updates + session transitions (COMPLETE Jan 28) |
-| Sat Feb 21 | ~~Flutter: completion screens~~ | 1–2h | ✅ Polished success/failure screens + animated transitions + redemption countdown timer + Ash/Frozen Votes display + "Start Redemption" CTA (COMPLETE Feb 21) |
-| Sun Feb 22 | ~~Flutter: redemption session UI~~ | 1–2h | ✅ RedemptionSetupScreen with expiry countdown, stake display, duration picker, "Begin Redemption" flow + wallet banner link (COMPLETE Feb 21) |
-| Mon Feb 23 | ~~Backend: redemption session support~~ | 1–2h | ✅ `type: REDEMPTION` in startSession (validates expiry + purgatoryVotes) + resolveSession REDEMPTION branch (rescue votes / ash→obsidian on SUCCESS, burn votes on FAILURE) (COMPLETE Feb 21) |
-| Tue Feb 24 | ~~Shop: catalog + inventory schema~~ | 1–2h | ✅ ShopItem/ShopPurchase models + shopCatalogProvider/userPurchasesProvider + handlePurchaseShopItem Cloud Function + full shop UI with catalog grid, rarity badges, purchase flow (COMPLETE Feb 21) |
-| Wed Feb 25 | ~~Shop: purchase function~~ | 1–2h | ✅ Included in Feb 24 implementation — handlePurchaseShopItem with obsidian deduction, ledger entry, idempotency (COMPLETE Feb 21) |
-| Thu Feb 26 | ~~Flutter: shop UI~~ | 1–2h | ✅ Included in Feb 24 implementation — full catalog grid + purchase confirmation + owned state (COMPLETE Feb 21) |
-| Fri Feb 27 | Observability | 1–2h | Analytics events + structured logging in functions |
-| Sat Feb 28 | Tests: Functions unit tests | 1–2h | Unit tests for idempotency + core settlement invariants |
-| Sun Mar 1 | Tests: integration happy path | 1–2h | Manual test script + emulator runbook |
-| Mon Mar 2 | Tests: iOS on-device checklist | 1–2h | Repeatable device test checklist for Screen Time + failure |
-| Tue Mar 3 | Hardening: edge cases | 1–2h | App kill/background/relaunch reconciliation paths |
-| Wed Mar 4 | App Store metadata draft | 1–2h | Skill-first description + disclosures draft + privacy checklist |
-| Thu Mar 5 | TestFlight prep | 1–2h | Build settings + versioning + release checklist |
-| Fri Mar 6 | TestFlight upload + smoke test | 1–2h | First TestFlight build uploaded + smoke test checklist |
-| Sat Mar 7 | App Store submission session | 1–2h | Submission checklist complete + “expected questions” answers prepared |
+All sessions prior to Feb 25 are **complete** (see Completed Work Log above).
+
+| Date | Task | Time | Deliverable |
+|------|------|------|-------------|
+| **Wed Feb 25** | ✅ Apple Sign-In implementation | 1–2h | `sign_in_with_apple` + `crypto` wired, nonce OAuth flow, sign-in screen updated |
+| **Thu Feb 26** | ✅ Stripe payment sheet connection | 1–2h | `flutter_stripe` integrated, payment sheet init/present, success/cancel/error handling |
+| **Fri Feb 27** | ✅ Tab navigation + shell route | 1–2h | `StatefulShellRoute.indexedStack` + `NavigationBar` (Home, Wallet, Shop, Settings) |
+| **Sat Feb 28** | ✅ Dashboard / home screen | 1–2h | Wallet summary card, quick actions, redemption warning, Focus Cycle explainer |
+| **Sun Mar 1** | ✅ Onboarding flow (3 screens) | 1–2h | Welcome → How It Works → Screen Time Permission. `shared_preferences` + skip logic |
+| **Mon Mar 2** | ✅ Settings screen implementation | 1–2h | Account info, Screen Time status, blocked apps, Apple linking, sign-out |
+| **Tue Mar 3** | ✅ Analytics + crash reporting | 1–2h | `AnalyticsService` (20+ events) + `FirebaseCrashlytics` + GoRouter observer |
+| **Wed Mar 4** | Flutter tests — models + providers | 1–2h | Unit tests for Wallet, Session, ShopItem models. Provider tests for wallet, auth |
+| **Thu Mar 5** | Flutter tests — widget tests | 1–2h | Widget tests for pledge setup, active session, completion screens |
+| **Fri Mar 6** | Session history + transaction history | 1–2h | Past sessions list screen, ledger/transaction history on wallet |
+| **Sat Mar 7** | On-device Screen Time testing (H) | 1–2h | Test shielding, violation detection, reconcileOnLaunch on real iPhone hardware |
+| **Sun Mar 8** | Hardening: edge cases | 1–2h | App kill/background/relaunch reconciliation, offline handling, error states |
+| **Mon Mar 9** | Observability: Cloud Functions logging | 1–2h | Structured logging in functions, error alerting configuration |
+| **Tue Mar 10** | App Store metadata draft | 1–2h | Skill-first description, keywords, categories, age rating, privacy checklist |
+| **Wed Mar 11** | Legal: privacy policy + terms | 1–2h | Privacy policy (Screen Time disclosure), terms of service, closed-loop disclosures |
+| **Thu Mar 12** | Production Firebase + Stripe cutover | 1–2h | Production project, deploy rules, set secrets, switch Stripe keys, configure webhook endpoints |
+| **Fri Mar 13** | TestFlight prep + upload | 1–2h | Build settings, versioning, first TestFlight build uploaded |
+| **Sat Mar 14** | TestFlight smoke testing | 1–2h | Full regression: sign-in → buy credits → pledge → session → resolve → redemption → shop |
+| **Sun Mar 15** | App Store submission session | 1–2h | Submission checklist, review notes explaining skill-based economy, expected questions prepared |
 
 After submission: plan 1–2h/day for review responses and bugfix builds.
 
 ---
 
-## 3) Detailed plan by phase (with timelines)
+## Detailed Plan by Phase
 
-### Phase 1 — Foundations (Week 1 | ~3–5 days engineering)
+### ✅ Phase 1 — Foundations (COMPLETE)
 
-#### 1.1 Repository + architecture skeleton (A | 0.5–1 day)
+#### ✅ 1.1 Repository + architecture skeleton
 
-- Establish Flutter app layers:
-  - `lib/app/` (routing + app shell)
-  - `lib/features/` (wallet, sessions, settings, shop)
-  - `lib/services/` (firebase, api, analytics)
-  - `lib/models/` (typed models)
-  - `lib/state/` (state management: Riverpod or Bloc)
-- Decide state mgmt (recommend: **Riverpod** for testability + modularity)
-- Add environment configuration (dev/staging/prod)
-- Add error reporting hooks (Crashlytics stub)
+- Flutter app layers: `lib/app/`, `lib/features/`, `lib/services/`, `lib/models/`, `lib/shared/`
+- State management: Riverpod
+- Environment configuration (dev + emulator support)
 
-**Exit criteria**
+#### ✅ 1.2 Firebase project(s) & environments
 
-- App launches to a placeholder home screen
-- App has routing + a dependency injection/story
+- Firebase project configured with emulator support
+- GoogleService-Info.plist for emulator config (demo-focuspledge)
+- Auth, Firestore, Cloud Functions enabled
 
-#### 1.2 Firebase project(s) & environments (M | 0.5–1 day + setup time)
+#### ✅ 1.3 Firestore schema + Security Rules
 
-- Create Firebase projects:
-  - `focuspledge-dev`
-  - `focuspledge-staging`
-  - `focuspledge-prod`
-- Configure iOS app IDs and download `GoogleService-Info.plist`
-- Enable:
-  - Firebase Auth
-  - Firestore
-  - Cloud Functions
-  - (Optional) Cloud Storage
+- Callable Functions approach (client never writes request docs)
+- Security Rules deployed with 15 test cases
+- Server-authoritative wallet writes enforced
 
-**Human inputs needed**
+#### ✅ 1.4 Cloud Functions scaffolding + deployment pipeline
 
-- Firebase console access
-- Bundle ID finalization
-
-**Exit criteria**
-
-- Flutter connects to Firebase in dev
-- Auth can sign-in (anonymous or Apple Sign-In stub for now)
-
-#### 1.3 Firestore schema + Security Rules baseline (A | 0.5–1 day)
-
-- Implement Firestore Security Rules:
-  - Users can read their own user doc and session docs
-  - Users cannot write wallet balances or ledger entries
-  - Users can write limited “requests” collections (or call Callable Functions only)
-- Choose one approach:
-  - **Callable Functions only** (recommended): client never writes request docs
-  - Or a `requests/` collection + triggers (more complex)
-
-**Exit criteria**
-
-- Rules deployed to dev
-- A basic “read my profile” works
-- A simulated wallet write from client is denied
-
-#### 1.3.1 Phoenix Protocol Firestore schema (spec draft)
-
-This schema is intentionally simple, client-readable, and server-writable. All balance mutations happen in Cloud Functions.
-
-**Collection: `users/{uid}`**
-
-```json
-{
-  "uid": "user_12345",
-  "wallet": {
-    "credits": 1500,
-    "ash": 500,
-    "obsidian": 25,
-    "purgatoryVotes": 500,
-    "lifetimePurchased": 5000
-  },
-  "status": {
-    "currentTheme": "midnight_matte",
-    "appIcon": "void_black",
-    "streakType": "obsidian"
-  },
-  "deadlines": {
-    "redemptionExpiry": "2026-01-25T14:30:00Z"
-  }
-}
-```
-
-**Collection: `sessions/{sessionId}`**
-
-```json
-{
-  "sessionId": "sess_001",
-  "userId": "user_12345",
-  "type": "PLEDGE",
-  "status": "ACTIVE",
-  "pledgeAmount": 500,
-  "startTime": "2026-01-25T13:30:00Z",
-  "durationMinutes": 60,
-  "deviceActivityToken": "...",
-  "native": {
-    "lastCheckedAt": "2026-01-25T13:31:00Z",
-    "failureFlag": false,
-    "failureReason": null
-  },
-  "settlement": {
-    "resolvedAt": null,
-    "resolvedBy": null,
-    "resolution": null,
-    "idempotencyKey": null
-  }
-}
-```
-
-**Invariants (enforced server-side)**
-
-- Client cannot increment `users.wallet.*` fields directly.
-- `sessions.status` transitions are monotonic (`ACTIVE` → `COMPLETED|FAILED`), and settlement is idempotent.
-- “Credits burned” means total Credits supply decreases server-side (ledger entry represents destruction).
-- Redemption eligibility is time-based using `users.deadlines.redemptionExpiry` (conversion details TBD).
-
-#### 1.4 Cloud Functions scaffolding + deployment pipeline (A/M | 1–2 days)
-
-- Create functions project (TypeScript):
-  - Lint + test configuration
-  - Shared helpers for idempotency
-  - Structured logging
-- Set up secrets management:
-  - Stripe keys as Firebase secrets
-  - Webhook signing secret
-- Configure build/deploy scripts (CI-friendly)
-
-**Exit criteria**
-
-- `helloWorld` callable works
-- Secrets access works in dev
+- TypeScript functions project with lint + test
+- Firebase emulator integration verified
+- GitHub Actions CI workflow
 
 ---
 
-### Phase 2 — Phoenix Protocol economy + session engine (Weeks 2–3 | ~6–10 days engineering)
+### ✅ Phase 2 — Phoenix Protocol Economy + Session Engine (COMPLETE)
 
-#### 2.1 Stripe Credits packs: PaymentIntent + webhook posting (A/M | 2–3 days)
+#### ✅ 2.1 Stripe Credits packs: PaymentIntent + webhook
 
-- Callable: `createCreditsPurchaseIntent(packId)`
-  - Creates Stripe PaymentIntent
-  - Returns client secret
-  - Stores a pending purchase record keyed by idempotency
-- Webhook handler:
-  - Validates signature
-  - Posts immutable ledger entry for `credits_purchase`
-  - Updates derived `users/{uid}.wallet.credits` and `lifetimePurchased` in a Firestore transaction
-- Add idempotency:
-  - Stripe event ID in `stripeEvents/{eventId}`
-  - Ledger `idempotencyKey` for “at most once” posting
+- `createCreditsPurchaseIntent(packId)` — 4 packs (starter/standard/value/premium)
+- `handleStripeWebhook()` — signature verification + dual idempotency (event ID + PaymentIntent ID)
+- Tests: 6/6 passing
 
-**Human inputs needed**
+#### ✅ 2.2 Ledger + derived balances
 
-- Stripe dashboard access
-- Webhook endpoint configuration
+- Immutable ledger entries for all balance changes
+- Full + incremental reconciliation jobs
+- Tests: 3/3 passing
 
-**Exit criteria**
+#### ✅ 2.3 Session lifecycle + settlement
 
-- Buy a Credits pack in test mode → `wallet.credits` updates
-- Replaying the webhook does not double-credit
+- `startSession` — ledger-driven balance check, `credits_lock`, idempotency
+- `heartbeatSession` — server timestamp update
+- `resolveSession` — SUCCESS (credits_refund) and FAILURE (credits_burn + ash_grant + purgatoryVotes + redemptionExpiry)
+- Tests: 8/8 passing
 
-#### 2.2 Ledger + derived balances (A | 1–2 days)
+#### ✅ 2.4 Redemption loop
 
-- Implement server-only invariants for Phoenix balances:
-  - Credits/Ash/Obsidian/Votes are derived from ledger entries
-  - Credits can be **locked**, **refunded**, or **burned**; burning reduces total supply
-- On every posted ledger entry:
-  - Update balances atomically
-  - Append ledger entry immutably
-- Add admin correction mechanism (restricted)
+- `type: REDEMPTION` in startSession (validates expiry + purgatoryVotes > 0)
+- REDEMPTION SUCCESS: rescue Frozen Votes, Ash → Obsidian (1:1), clear deadline
+- REDEMPTION FAILURE: burn Frozen Votes permanently, clear deadline
 
-**Exit criteria**
+#### ✅ 2.5 Anti-cheat: scheduled expiry
 
-- Balance is always consistent with ledger
-- Tampering attempts fail due to rules
-
-#### 2.3 Session lifecycle + settlement: `resolveSession()` (A | 2–3 days)
-
-- `startSession(pledgeCredits, durationMinutes, deviceId, deviceActivityToken, selectionSnapshot)`
-  - Validations: pledge bounds, max 1 active session, sufficient Credits
-  - Ledger: Credits **lock** (`credits_lock`)
-  - Create session doc `ACTIVE`
-- `heartbeatSession(sessionId, deviceId)`
-  - Updates server heartbeat timestamp
-- `resolveSession(sessionId, resolution, reason?, nativeEvidence?)`
-  - **The only settlement pathway** (idempotent)
-  - Success:
-    - Ledger: unlock/refund Credits (`credits_refund`)
-    - Award **Impact Points** (charity voting power)
-  - Failure:
-    - Ledger: burn locked Credits (`credits_burn`)
-    - Grant Ash (`ash_grant`)
-    - Increment `purgatoryVotes` (“Frozen Votes”)
-    - Set `users/{uid}.deadlines.redemptionExpiry = now + 24h`
-
-**Exit criteria**
-
-- Happy path: start → heartbeat → `resolveSession(SUCCESS)` → Credits refunded + Impact Points granted
-- Failure path: `resolveSession(FAILURE)` → Credits burned + Ash granted + Frozen Votes updated + deadline set
-- All functions are idempotent
-
-#### 2.4 Redemption loop (A/M | 1–2 days)
-
-Redemption is a second-chance skill loop triggered after a failure.
-
-- Failure creates:
-  - `wallet.ash += pledgeAmount`
-  - `wallet.purgatoryVotes += pledgeAmount` (Frozen Votes)
-  - `deadlines.redemptionExpiry = now + 24h`
-- A “Redemption Session” completed before `redemptionExpiry`:
-  - Converts Ash → Obsidian (conversion details TBD)
-  - Rescues Frozen Votes (policy details TBD)
-
-**Implementation note**: treat redemption as a session type (`type: REDEMPTION`) resolved through the same `resolveSession()` machinery.
-
-#### 2.5 Anti-cheat: scheduled expiry + server time authority (A/M | 1–2 days)
-
-- Scheduler runs every 1–5 minutes:
-  - Finds `ACTIVE` sessions whose heartbeat is stale beyond grace window
-  - Resolves as failure (reason: no_heartbeat) per policy
-- Ensure server-side time is authoritative:
-  - End time computed from `startTime + durationMinutes`
-  - Ignore client time for settlement decisions
-
-**Exit criteria**
-
-- Force quit app during session → session resolves after grace period
-- Reopening app shows final status from server
+- `expireStaleSessionsScheduled` runs every 5 minutes
+- Auto-resolves ACTIVE sessions with stale heartbeats (>10min grace) as FAILURE
+- Tests: 4/4 passing
 
 ---
 
-### Phase 3 — iOS Screen Time enforcement (Weeks 3–5 | ~8–12 days engineering + approvals)
+### ✅ Phase 3 — iOS Screen Time Enforcement (CODE COMPLETE — awaiting device testing)
 
-> This is the most complex slice. Expect iterations on real devices.
+#### ✅ 3.1 Apple entitlement & capability readiness
 
-#### 3.1 Apple entitlement & capability readiness (H/M | 1 day + 1–3+ weeks lead)
+- FamilyControls, DeviceActivity, ManagedSettings frameworks added
+- Entitlements configured for app + extension
+- Deployment target: iOS 16.0
 
-- Confirm requirements for:
-  - FamilyControls
-  - DeviceActivity
-  - ManagedSettings
-- Add capability in Xcode (may require Apple approval depending on entitlement)
-- Prepare justification for Apple if requested:
-  - Productivity purpose
-  - User-controlled selection
-  - Clear disclosures
+#### ✅ 3.2 Flutter ↔ iOS plugin scaffold
 
-**Exit criteria**
+- MethodChannel with 7 methods: `requestAuthorization`, `getAuthorizationStatus`, `presentAppPicker`, `startSession`, `stopSession`, `checkSessionStatus`, `getAppGroupState`
+- App Group: `group.com.focuspledge.shared`
 
-- App can compile with frameworks and entitlements on a real device
+#### ✅ 3.3 Authorization + app selection UX
 
-#### 3.2 Flutter ↔ iOS plugin scaffold (A | 1–2 days)
+- FamilyControls authorization flow implemented
+- FamilyActivityPicker for app selection
+- Selection stored in App Group
 
-Create a platform plugin with a MethodChannel-first API:
+#### ✅ 3.4 DeviceActivity Monitor Extension
 
-- `requestAuthorization()`
-- `getAuthorizationStatus()`
-- `presentAppPicker()`
-- `startSession(sessionId, durationMinutes)` (host app sets schedule + begins monitoring)
-- `stopSession(sessionId)`
-- `checkSessionStatus(sessionId)` (Flutter polls; returns failure flags + reason)
-- `getAppGroupState()` (debug)
-- Add an App Group for shared storage between app and extensions
+- FocusPledgeMonitor extension target in Xcode
+- `intervalDidStart` → apply shields, `intervalDidEnd` → remove shields, `eventDidReachThreshold` → flag violation
+- Embedded in Runner.app/PlugIns/
 
-**Exit criteria**
+#### ✅ 3.5 Violation detection → server settlement
 
-- Flutter can call into Swift and receive a callback
+- Extension writes `sessionFailed=true` + reason + appBundleId to App Group
+- Flutter polls every 5 seconds, auto-calls `resolveSession(FAILURE)` on detection
 
-#### 3.3 Authorization + app selection UX (A | 1–2 days)
+#### ✅ 3.6 Resilience: reboot/kill/reinstall
 
-- Implement FamilyControls authorization flow
-- Implement FamilyActivityPicker
-- Store selection snapshot to App Group
-- Mirror selection to Firestore user settings (server-validated write)
+- `reconcileOnLaunch()` in AppDelegate re-applies shields if active session exists
+- Server scheduler resolves sessions if user never returns
 
-**Exit criteria**
+#### ⚠️ 3.7 On-device validation (PENDING — requires real hardware)
 
-- User can authorize and select distracting apps on device
-
-#### 3.4 DeviceActivity Monitor Extension (A | 2–4 days)
-
-- Create extension target
-- Start monitoring aligned to active pledge window
-- Handle callbacks (interval start/end)
-- Apply ManagedSettings shields during active window
-
-**Exit criteria**
-
-- When session starts, blocked apps show iOS shield UI
-- When session ends, shields are removed
-
-#### 3.5 Violation detection → server settlement (A | 2–3 days)
-
-Extension writes a durable failure flag to App Group storage:
-
-- `sessionFailed=true` (+ `reason`, + `timestamp`, + `sessionId`)
-
-Flutter periodically polls `checkSessionStatus(sessionId)` and, on failure:
-
-- Calls server settlement: `resolveSession(sessionId, FAILURE, reason, nativeEvidence)`
-
-Ensure failure is robust even if the app is backgrounded:
-
-- On next resume, app reconciles App Group state and settles server-side
-
-**Exit criteria**
-
-- Opening blocked app during an active session results in server failure + settlement
-
-#### 3.6 Resilience: reboot/kill/reinstall behavior (A/H | 1–2 days)
-
-- Re-apply shielding if server session is still active and user relaunches
-- Ensure session is resolved by server scheduler if user never returns
-
-**Exit criteria**
-
-- No path allows escaping settlement by terminating the app
-
-Flutter periodically polls `checkSessionStatus(sessionId)` and, on failure:
-
-- Calls server settlement: `resolveSession(sessionId, FAILURE, reason, nativeEvidence)`
-
-Ensure failure is robust even if the app is backgrounded:
-
-- On next resume, app reconciles App Group state and settles server-side
-  - Converts Ash → Obsidian (conversion details TBD)
-  - Rescues Frozen Votes (policy details TBD)
-  - Credits / Ash / Obsidian / Frozen Votes
-  - Buy Credits packs (Stripe)
-- Scheduler runs every 1–5 minutes:
-  - Session setup: duration + pledge Credits
-  - “Pulse” countdown
-  - success: Credits returned + Impact Points earned
-  - failure: Credits burned + Ash gained + Frozen Votes at risk + Redemption timer
-
-#### 4.3 Obsidian shop cosmetics (A | 1–2 days)
-
-- Obsidian balance (server-authoritative)
-- Shop catalog (from Firestore config): themes, app icons, status badges
-- Purchase function (server-side): deduct Obsidian, increment inventory
-
-- User can buy a cosmetic with Obsidian
-
-#### 4.4 Redemption UX (A | 1–2 days)
-
-- Show redemption timer (`redemptionExpiry`) after a failed pledge
-- Allow starting a Redemption Session
-- On completion, show “rescued votes” outcome and any Ash→Obsidian conversion (details TBD)
-
-**Exit criteria**
-
-- User can complete a Redemption Session flow end-to-end
-
-- Crashlytics + Analytics (events: credits purchase started/succeeded, session started/resolved, redemption started/resolved)
-
-- Closed-loop economy disclosures (no cash-out, no withdrawals)
-- Skill-first disclosures and copy review (avoid chance-based framing)
-  - FamilyControls
-  - DeviceActivity
-- Production credits purchase and session settlement work end-to-end
-- Add capability in Xcode (may require Apple approval depending on entitlement)
-  - credits purchase intent
-  - Stripe webhook handler (credits pack fulfillment)
-  - session start/heartbeat
-  - session settlement: `resolveSession`
-  - redemption session start/settlement (via `resolveSession`)
-
-- Shielding engages only during an active pledge window
-- Violation flag is written to App Group and reliably results in server-side settlement
-
-#### 3.2 Flutter ↔ iOS plugin scaffold (A | 1–2 days)
-
-- Pledge session flow UI + Pulse screen
-- Redemption session flow UI
-- Shop + inventory (Obsidian cosmetics)
-
-### Testing deliverables
-
-- Rules tests covering “client can’t write balances” and session access boundaries
-- Cloud Functions unit tests for idempotency + core invariants
-- Manual iOS device test checklist for Screen Time enforcement + backgrounding
-- Pre-submission regression checklist (happy path + failure + redemption)
-- `presentAppPicker()`
-- `startSession(sessionId, durationMinutes)` (host app sets schedule + begins monitoring)
-- `stopSession(sessionId)`
-- `checkSessionStatus(sessionId)` (Flutter polls; returns failure flags + reason)
-
-4. **Redemption policy**
-
-- Define precisely to avoid exploit paths (eligibility, timing, what gets rescued).
-
-5. **Native signal handling**
-
-- Polling (`checkSessionStatus`) vs event streams; polling is preferred for robustness.
-
-6. **Impact Points / votes storage model**
-
-- Per-user counters vs event-sourced vote ledger.
-
-- **Legal/compliance ambiguity (skill vs chance framing)**
-  - Mitigation: strict wording guardrails, closed-loop economy disclosures, and early review of flows/copy.
-- Flutter can call into Swift and receive a callback
-
-2. Confirm: **no withdrawals / no cash-out** (closed-loop) for v1?
-3. How should **Impact Points / charity votes** be stored and tallied (per-user counter vs vote events collection)?
-4. Redemption details (we can defer conversions, but should lock the shape):
-
-- What is rescued on redemption (all Frozen Votes vs some)?
-- Any cooldowns or rate limits?
-- Implement FamilyActivityPicker
-- Store selection snapshot to App Group
-- Mirror selection to Firestore user settings (server-validated write)
-
-**Exit criteria**
-
-- User can authorize and select distracting apps on device
-
-#### 3.4 DeviceActivity Monitor Extension (A | 2–4 days)
-
-- Create extension target
-- Start monitoring aligned to active pledge window
-- Handle callbacks (interval start/end)
-- Apply ManagedSettings shields during active window
-
-**Exit criteria**
-
-- When session starts, blocked apps show iOS shield UI
-- When session ends, shields are removed
-
-#### 3.5 Violation detection → server fail (A | 2–3 days)
-
-Extension writes a durable failure flag to App Group storage:
-
-- `sessionFailed=true` (+ `reason`, + `timestamp`, + `sessionId`)
-
-Flutter periodically polls `checkSessionStatus(sessionId)` and, on failure:
-
-- Calls server settlement: `resolveSession(sessionId, FAILURE, reason, nativeEvidence)`
-
-Ensure failure is robust even if the app is backgrounded:
-
-- On next resume, app reconciles App Group state and settles server-side
-
-**Exit criteria**
-
-- Opening blocked app during an active session results in server failure + settlement
-
-#### 3.6 Resilience: reboot/kill/reinstall behavior (A/H | 1–2 days)
-
-- Re-apply shielding if server session is still active and user relaunches
-- Ensure session is resolved by server scheduler if user never returns
-
-**Exit criteria**
-
-- No path allows escaping settlement by terminating the app
+- [ ] Verify shielding appears on blocked apps during session
+- [ ] Verify violation flag is written when user attempts to bypass
+- [ ] Verify reconcileOnLaunch re-shields after force quit
+- [ ] Verify session resolves after heartbeat staleness (app killed entirely)
+- [ ] Test on iOS 16, 17, and 18 if possible
 
 ---
 
-### Phase 4 — Product features (Weeks 5–6 | ~5–8 days engineering)
+### Phase 4 — Product Features (PARTIALLY COMPLETE)
 
-#### 4.1 Wallet UI + history (A | 1–2 days)
+#### ✅ 4.1 Wallet UI
 
-- Wallet screen:
-  - Credits / Ash / Obsidian / Frozen Votes
-  - Buy Credits packs (Stripe)
-  - Recent ledger history (read-only)
-- Transaction detail view
+- ✅ Wallet screen with Credits, Ash, Obsidian, Frozen Votes balances
+- ✅ Live Firestore streaming
+- ✅ Redemption deadline warning banner with "Start Redemption" CTA
+- ⬜ Transaction/ledger history view
 
-**Exit criteria**
+#### ✅ 4.2 Pledge session UX
 
-- User can see accurate balances + transaction history
+- ✅ Pledge setup: duration + pledge Credits selection
+- ✅ Active session "Pulse" screen with countdown timer + heartbeat
+- ✅ Native failure polling (5s interval) + auto-resolution
+- ✅ Animated completion screens (success + failure)
 
-#### 4.2 Pledge session UX (A | 1–2 days)
+#### ✅ 4.3 Redemption UX
 
-- Pledge setup: duration + pledge Credits
-- Active session screen (“Pulse”):
-  - countdown
-  - explicit “skill-first” explanation of failure conditions
-  - periodic heartbeat + native failure polling
-- Completion screens:
-  - success: Credits returned + Impact Points earned
-  - failure: Credits burned + Ash gained + Frozen Votes at risk + Redemption timer
+- ✅ RedemptionSetupScreen with expiry countdown, stake display, duration picker
+- ✅ Outcomes card explaining success vs failure
+- ✅ "Start Redemption" button on wallet warning banner
 
-**Exit criteria**
+#### ✅ 4.4 Obsidian shop cosmetics
 
-- Clear UX flow with safe wording, no gambling framing
+- ✅ Shop catalog from Firestore with category-grouped grid
+- ✅ Rarity badges, owned state, Obsidian balance chip
+- ✅ Purchase confirmation dialog + `handlePurchaseShopItem` Cloud Function
 
-#### 4.3 Redemption UX (A | 1–2 days)
+#### ✅ 4.5 Apple Sign-In (DONE)
 
-- After failure, show `redemptionExpiry` countdown
-- Allow starting a Redemption Session
-- On completion, show “rescued votes” outcome and any Ash→Obsidian conversion (details TBD)
+- `sign_in_with_apple` + `crypto` packages added to `pubspec.yaml`
+- Nonce-based OAuth flow: generate nonce → SHA256 hash → `getAppleIDCredential` → `OAuthProvider` credential → `signInWithCredential`
+- Display name update on first sign-in (Apple only sends name once)
+- Sign-in screen updated with Apple Sign-In as primary button
+- Analytics tracking: `AnalyticsService.logSignIn(method: 'apple')`
 
-**Exit criteria**
+#### ✅ 4.6 Stripe Payment Sheet (DONE)
 
-- User can complete a Redemption Session flow end-to-end
+- `flutter_stripe` package added; Stripe publishable key initialized in `main.dart`
+- `buy_credits_screen.dart` calls `createCreditsPurchaseIntent` → `initPaymentSheet` → `presentPaymentSheet`
+- Handles: success (pop back + snackbar), cancellation (`StripeException` with `FailureCode.Canceled`), errors
+- Analytics events: `logPurchaseStart`, `logPurchaseComplete`, `logPurchaseCancelled`
 
-#### 4.4 Obsidian shop cosmetics (A | 1–2 days)
+#### ✅ 4.7 Tab Navigation + Dashboard (DONE)
 
-- Obsidian balance (server-authoritative)
-- Shop catalog (from Firestore config): themes, app icons, status badges
-- Purchase function (server-side): deduct Obsidian, grant cosmetic/inventory
+- `StatefulShellRoute.indexedStack` with 4 `StatefulShellBranch` branches
+- `ShellScreen` with Material 3 `NavigationBar` (Home, Wallet, Shop, Settings)
+- Wallet sub-routes nested: `/wallet/buy-credits`, `/wallet/session/setup`, `/wallet/session/active/:id`, `/wallet/session/redemption-setup`
+- `DashboardScreen`: time-based greeting, wallet summary (all 4 balances), quick action cards, redemption warning banner, Focus Cycle explainer
 
-**Exit criteria**
+#### ✅ 4.8 Onboarding Flow (DONE)
 
-- User can buy a cosmetic with Obsidian
+- 3-page `PageView` with `PageController`: Welcome → How It Works → Screen Time Permission
+- Skip button on all pages → `completeOnboarding()`
+- First-launch detection: `shared_preferences` `onboarding_complete` flag
+- `onboardingCompleteProvider` checked in router redirect logic
+- Screen Time permission page: request authorization + status display + "Continue without" fallback
 
-#### 4.5 Notifications (optional for MVP) (A/M | 1–2 days)
+#### ✅ 4.9 Settings Screen (DONE)
 
-- Local/push notifications:
-  - pledge ending soon
-  - pledge resolved
-  - redemption expiry reminder
-- Requires APNs setup (human input)
+- Full replacement of stub implementation
+- Account section: avatar, display name / email, guest indicator
+- Apple account linking card for anonymous users (calls `signInWithApple`)
+- Screen Time section: permission status (approved/denied/not configured) + enable button + blocked apps management
+- About section: version, terms of service, privacy policy (placeholder taps)
+- Sign-out with confirmation dialog warning about guest progress loss
+
+#### ⬜ 4.10 Session History (NOT DONE — Medium)
+
+- No way to view past sessions
+- Need a list of completed/failed sessions with details
+
+#### ⬜ 4.11 Notifications (optional for MVP)
+
+- Local/push notifications for session events, redemption deadlines
+- Requires APNs setup (human task)
 
 ---
 
-### Phase 5 — Hardening, compliance, and App Store release (Weeks 6–8 | ~6–10 days + review time)
+### Phase 5 — Hardening, Compliance, and App Store Release (NOT STARTED)
 
-#### 5.1 Security review + threat modeling (A/H | 1–2 days)
+#### ⬜ 5.1 Security review + threat modeling (A/H | 1–2 days)
 
-- Threat model:
-  - replay attacks
-  - idempotency failures
-  - client tampering
-  - webhook spoofing
-  - privilege escalation (rules)
-- Add tests:
-  - Cloud Functions unit tests
-  - Rules tests
-  - Flutter unit/widget tests (minimum: session UI state machine)
+- Threat model: replay attacks, idempotency failures, client tampering, webhook spoofing
+- Add tests: Cloud Functions unit tests, Flutter widget tests
+- Document threats + mitigations
 
-**Exit criteria**
+#### ⬜ 5.2 Observability + incident readiness (A/M | 1–2 days)
 
-- Documented threats + mitigations
-- Automated tests cover core invariants
+- ✅ Firebase Analytics events in Flutter: 20+ event types (auth, session, purchase, redemption, shop, onboarding)
+- ✅ Crashlytics integration for crash reporting (fatal error recording in main.dart)
+- ✅ GoRouter navigation observer (FirebaseAnalyticsObserver)
+- ⬜ Cloud Functions structured logging + error alerting
 
-#### 5.2 Observability + incident readiness (A/M | 1–2 days)
+#### ⬜ 5.3 Performance & iOS polish (A/H | 1–2 days)
 
-- Crashlytics + Analytics (events: credits purchase started/succeeded, pledge started/resolved, redemption started/resolved)
-- Cloud Functions alerting (error rate, webhook failures)
-- Admin dashboard stub (optional)
+- Cold start optimization
+- iOS-specific UX: haptics, system fonts, accessibility labels
+- Loading skeleton screens, unified error widgets
 
-**Exit criteria**
-
-- Errors are visible and actionable
-
-#### 5.3 Performance & iOS polish (A/H | 1–2 days)
-
-- Cold start and navigation performance
-- iOS-specific UX:
-  - haptics
-  - system fonts
-  - accessibility labels
-
-**Exit criteria**
-
-- Smooth, native-feeling iOS experience
-
-#### 5.4 Legal & product disclosures (H/M | 2–5 days)
+#### ⬜ 5.4 Legal & product disclosures (H/M | 2–5 days)
 
 - Privacy policy (Screen Time usage disclosure)
 - Terms of service
 - Payment/dispute policy
 - Closed-loop economy disclosures (no cash-out, no withdrawals)
-- Skill-first disclosures and copy review (avoid chance-based framing)
+- Skill-first disclosures (avoid chance-based framing)
 
-**Exit criteria**
+#### ⬜ 5.5 App Store Connect + TestFlight (H/M | 1–2 days)
 
-- Legal docs ready and linked in app
-
-#### 5.5 App Store Connect + TestFlight (H/M | 1–2 days)
-
-- App metadata:
-  - description
-  - keywords
-  - categories
-  - age rating
+- App metadata: description, keywords, categories, age rating
 - Screenshots + preview video (optional)
 - Upload build to TestFlight
 - Internal + external testing
 
-**Exit criteria**
-
-- TestFlight build distributed
-
-#### 5.6 Production cutover (H/M | 1–2 days)
+#### ⬜ 5.6 Production cutover (H/M | 1–2 days)
 
 - Switch Stripe keys to production
-- Confirm webhook endpoints for production
-- Firebase production project locked down:
-  - IAM
-  - rules
-  - secrets
+- Confirm webhook endpoints
+- Firebase production project: IAM, rules, secrets
 
-**Exit criteria**
-
-- Production credits purchase and session settlement work end-to-end
-
-#### 5.7 App Store submission & review (H | 3–14 days variable)
+#### ⬜ 5.7 App Store submission & review (H | 3–14 days variable)
 
 - Submit for review
-- Respond to Apple questions, especially around Screen Time usage
-- Iterate on rejections quickly
-
-**Exit criteria**
-
-- App approved and live
+- Respond to Apple questions (especially Screen Time usage)
+- Iterate on rejections
 
 ---
 
-## 4) Deliverables checklist (what “done” looks like)
+## Deliverables Checklist
 
 ### Backend deliverables
 
-- Cloud Functions:
-  - credits purchase intent
-  - Stripe webhook handler (credits pack fulfillment)
-  - pledge start/heartbeat
-  - settlement: `resolveSession` (pledge + redemption)
-  - scheduled expiry
-  - shop purchase (Obsidian)
-- Firestore Security Rules enforcing server-only money writes
-- Rules + functions tests
-- Environment separation (dev/staging/prod)
+- [x] Cloud Functions: credits purchase intent
+- [x] Cloud Functions: Stripe webhook handler
+- [x] Cloud Functions: pledge start/heartbeat
+- [x] Cloud Functions: `resolveSession` (pledge + redemption)
+- [x] Cloud Functions: scheduled expiry
+- [x] Cloud Functions: shop purchase (Obsidian)
+- [x] Firestore Security Rules (server-only money writes)
+- [x] Rules + functions tests (21/21 passing)
+- [ ] Environment separation (dev/staging/prod — dev only currently)
+- [ ] Structured logging + alerting in Cloud Functions
 
 ### iOS deliverables
 
-- Screen Time authorization flow works on-device
-- App picker selection persists and is used for shielding
-- Shielding engages only during active pledge window
-- Violation flag is written to App Group and reliably results in server-side settlement
+- [x] Screen Time authorization flow (code complete)
+- [x] App picker selection + App Group storage
+- [x] Shielding via ManagedSettings during sessions
+- [x] Violation flagging to App Group
+- [x] Extension .appex embedded in bundle
+- [ ] On-device validation on real hardware
+- [ ] Multi-iOS-version testing (16, 17, 18)
 
 ### Flutter deliverables
 
-- Wallet UI (balances + history)
-- Pledge session flow UI + Pulse screen
-- Redemption session flow UI
-- Settings for distraction list
-- Shop + inventory (Obsidian cosmetics)
-- Robust handling of offline/resume states
+- [x] Wallet UI (balances + redemption warnings)
+- [x] Pledge session flow + Pulse screen
+- [x] Redemption session flow
+- [x] Shop + inventory (Obsidian cosmetics)
+- [x] Completion screens (animated success/failure)
+- [x] Apple Sign-In implementation
+- [x] Stripe payment sheet integration
+- [x] Tab navigation (ShellRoute + NavigationBar)
+- [x] Dashboard / home screen
+- [x] Onboarding flow (3 screens)
+- [x] Settings screen (account, blocked apps, sign-out)
+- [ ] Session history view
+- [ ] Transaction/ledger history
+- [ ] Offline handling / error states
+- [ ] Reusable shared widgets
 
 ### Testing deliverables
 
-- Rules tests covering “client can’t write balances” and session access boundaries
-- Cloud Functions unit tests for idempotency + core invariants
-- Flutter widget tests for key screens and state transitions
-- Manual iOS device test checklist for Screen Time enforcement + backgrounding
-- Pre-submission regression checklist (happy path + failure + redemption)
+- [x] Firestore Security Rules tests (15 cases)
+- [x] Cloud Functions emulator tests (21/21)
+- [ ] Flutter model unit tests
+- [ ] Flutter provider tests
+- [ ] Flutter widget tests (key screens)
+- [ ] Manual iOS device test checklist
+- [ ] Pre-submission regression checklist
 
 ### Release deliverables
 
-- Privacy policy + terms accessible in-app
-- Observability configured
-- TestFlight and App Store submission completed
+- [ ] Privacy policy + terms accessible in-app
+- [x] Observability configured (Analytics + Crashlytics on Flutter side)
+- [ ] Production Firebase + Stripe cutover
+- [ ] TestFlight build distributed
+- [ ] App Store submission completed
 
 ---
 
-## 5) Key technical decisions (make early)
+## Key Technical Decisions (Made)
 
-1. **Callable Functions vs request-doc triggers**
-   - Recommendation: **Callable Functions** for simplicity and immediate responses.
-2. **Idempotency strategy**
-   - Required for Stripe webhooks and all settlement endpoints.
-3. **Session authority**
-   - Server decides success/failure/expiry.
-   - Device enforces shielding and reports violations.
-4. **Redemption policy**
-
-- Define precisely to avoid exploit paths (eligibility, timing, what gets rescued).
-
-5. **Native signal handling**
-
-- Polling (`checkSessionStatus`) vs event streams; polling is preferred for robustness.
-
-6. **Impact Points / votes storage model**
-
-- Per-user counters vs event-sourced vote ledger.
+1. **Callable Functions** — client never writes request docs directly
+2. **Idempotency strategy** — `sessionId + idempotencyKey` for sessions; dual check (event ID + PaymentIntent ID) for Stripe
+3. **Session authority** — server decides success/failure/expiry; device enforces shielding and reports violations
+4. **Redemption policy** — all Frozen Votes rescued on redemption SUCCESS; all burned on FAILURE; Ash → Obsidian 1:1
+5. **Native signal handling** — polling (`checkSessionStatus` every 5s) for robustness
+6. **State management** — Riverpod with stream-based Firestore providers
 
 ---
 
-## 6) Risks and mitigations
+## Risks and Mitigations
 
-- **Apple Screen Time entitlement delays**
-  - Mitigation: request early (Week 1). Build backend + UI while waiting.
-- **Violation detection edge cases** (backgrounding, extension lifecycle)
-  - Mitigation: write violations to App Group and reconcile on resume; rely on server expiry for termination.
-- **Stripe webhook reliability**
-  - Mitigation: idempotency + event store + alerting.
-- **Rules misconfiguration**
-  - Mitigation: rules unit tests + least-privilege approach.
-- **Legal/compliance ambiguity (skill vs chance framing)**
-  - Mitigation: strict wording guardrails, closed-loop economy disclosures, and early review of flows/copy.
+- **Apple Screen Time entitlement delays** — Code is built, needs device testing. Plan for iteration.
+- **Violation detection edge cases** (backgrounding, extension lifecycle) — Writes to App Group + reconcileOnLaunch + server expiry scheduler.
+- **Stripe webhook reliability** — Dual idempotency + event store + alerting.
+- **Rules misconfiguration** — 15 rules unit tests + least-privilege approach.
+- **Legal/compliance (skill vs chance framing)** — Strict wording guardrails, forbidden-terms CI scanner, closed-loop economy disclosures.
+- **~~Apple Sign-In not implemented~~** — ✅ Resolved. Full nonce-based OAuth flow implemented with `sign_in_with_apple` package.
 
 ---
 
-## 7) Questions (to finalize plan and reduce rework)
+## Open Questions
 
-1. Do you want **Apple Sign-In only**, or also email/password?
-2. Confirm: **no withdrawals / no cash-out** (closed-loop) for v1?
-3. How should **Impact Points / charity votes** be stored and tallied (per-user counter vs vote events collection)?
-4. Redemption details (we can defer conversions, but should lock the shape):
-
-- What is rescued on redemption (all Frozen Votes vs some)?
-- Any cooldowns or rate limits?
-
-5. What’s the target iOS minimum version? (Recommendation: iOS 16+ for modern APIs and best Screen Time behavior.)
+1. ~~Do you want **Apple Sign-In only**, or also keep email/password + anonymous?~~ → **Decided:** Apple Sign-In (primary) + anonymous/guest (for testing). Email/password available but not prominent.
+2. How should **Impact Points / charity votes** be stored and tallied?
+3. What's the target iOS minimum version? (Currently: iOS 16+ for Screen Time APIs)
+4. Any cooldowns or rate limits on redemption sessions?

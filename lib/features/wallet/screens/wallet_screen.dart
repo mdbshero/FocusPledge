@@ -13,15 +13,7 @@ class WalletScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Wallet'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Wallet')),
       body: walletAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
@@ -95,8 +87,9 @@ class WalletScreen extends ConsumerWidget {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: () =>
-                                    context.push('/session/redemption-setup'),
+                                onPressed: () => context.push(
+                                  '/wallet/session/redemption-setup',
+                                ),
                                 icon: const Icon(Icons.restore),
                                 label: const Text('Start Redemption'),
                                 style: ElevatedButton.styleFrom(
@@ -162,7 +155,7 @@ class WalletScreen extends ConsumerWidget {
 
                   // Action Buttons
                   ElevatedButton.icon(
-                    onPressed: () => context.push('/buy-credits'),
+                    onPressed: () => context.push('/wallet/buy-credits'),
                     icon: const Icon(Icons.add_card),
                     label: const Text('Buy Focus Credits'),
                     style: ElevatedButton.styleFrom(
@@ -173,7 +166,7 @@ class WalletScreen extends ConsumerWidget {
 
                   OutlinedButton.icon(
                     onPressed: wallet.credits >= 100
-                        ? () => context.push('/session/setup')
+                        ? () => context.push('/wallet/session/setup')
                         : null,
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Start Pledge Session'),
