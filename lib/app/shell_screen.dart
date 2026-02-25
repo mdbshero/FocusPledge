@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../shared/widgets/offline_banner.dart';
 
 /// Main shell screen with bottom navigation bar
 class ShellScreen extends StatelessWidget {
@@ -10,7 +11,12 @@ class ShellScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: navigationShell),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (index) {

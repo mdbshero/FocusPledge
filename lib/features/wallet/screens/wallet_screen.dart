@@ -222,6 +222,31 @@ class WalletScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // History links
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/wallet/session/history'),
+                          icon: const Icon(Icons.history, size: 18),
+                          label: const Text('Sessions'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/wallet/transactions'),
+                          icon: const Icon(Icons.receipt_long, size: 18),
+                          label: const Text('Transactions'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

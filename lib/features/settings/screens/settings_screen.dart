@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/screen_time_service.dart';
 
@@ -230,18 +231,14 @@ class SettingsScreen extends ConsumerWidget {
                   leading: const Icon(Icons.description_outlined),
                   title: const Text('Terms of Service'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    // TODO: Open terms URL
-                  },
+                  onTap: () => context.push('/settings/terms-of-service'),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('Privacy Policy'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    // TODO: Open privacy URL
-                  },
+                  onTap: () => context.push('/settings/privacy-policy'),
                 ),
               ],
             ),

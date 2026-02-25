@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
+import { logger } from './logger';
 
 if (!admin.apps.length) admin.initializeApp();
 import reconcileIncremental from './reconcile/incrementalReconcile';
@@ -22,8 +23,11 @@ export async function handleResolveSession(data: any, context: any) {
   const reason: string | undefined = data?.reason;
 
   if (!sessionId || !resolution || !idempotencyKey) {
+    logger.warn('resolveSession: missing required parameters', { function: 'resolveSession', sessionId, resolution });
     throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters');
   }
+
+  logger.info('resolveSession: starting', { function: 'resolveSession', sessionId, resolution, idempotencyKey });
 
   const sessionRef = db.collection('sessions').doc(sessionId);
 
@@ -37,6 +41,7 @@ export async function handleResolveSession(data: any, context: any) {
     const currentSettlementKey = session?.settlement?.idempotencyKey;
 
     if (currentSettlementKey === idempotencyKey) {
+      logger.info('resolveSession: idempotent replay', { function: 'resolveSession', sessionId });
       return { status: 'already_settled', resolution: session.settlement.resolution };
     }
 
@@ -126,6 +131,7 @@ export async function handleResolveSession(data: any, context: any) {
       }
 
       // REDEMPTION FAILURE: Frozen Votes are lost permanently, ash remains
+      logger.info('resolveSession: redemption failure', { function: 'resolveSession', sessionId, userId });
       const userSnap = await tx.get(userRef);
       const userData = userSnap.exists ? userSnap.data() as any : {};
       const lostVotes = userData?.wallet?.purgatoryVotes || 0;
@@ -164,6 +170,7 @@ export async function handleResolveSession(data: any, context: any) {
     // =========================================================================
     // PLEDGE SESSION RESOLUTION (existing logic)
     // =========================================================================
+    logger.info('resolveSession: pledge resolution', { function: 'resolveSession', sessionId, userId, resolution, pledgedAmount, sessionType });
     if (resolution === 'SUCCESS') {
       const ledgerRef = db.collection('ledger').doc();
       tx.set(ledgerRef, {
@@ -248,8 +255,11 @@ export async function handlePurchaseShopItem(data: any, context: any) {
   const idempotencyKey: string = data?.idempotencyKey;
 
   if (!userId || !itemId || !idempotencyKey) {
+    logger.warn('purchaseShopItem: missing required parameters', { function: 'purchaseShopItem' });
     throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters: userId, itemId, idempotencyKey');
   }
+
+  logger.info('purchaseShopItem: starting', { function: 'purchaseShopItem', userId, itemId });
 
   return db.runTransaction(async (tx) => {
     // Idempotency check
@@ -331,10 +341,12 @@ export async function handleStartSession(data: any, context: any) {
   const sessionType: string = data?.type || 'PLEDGE';
 
   if (!userId || !idempotencyKey) {
+    logger.warn('startSession: missing required parameters', { function: 'startSession' });
     throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters');
   }
 
   if (sessionType !== 'PLEDGE' && sessionType !== 'REDEMPTION') {
+    logger.warn('startSession: invalid session type', { function: 'startSession', sessionType });
     throw new functions.https.HttpsError('invalid-argument', 'Invalid session type. Must be PLEDGE or REDEMPTION');
   }
 
@@ -345,6 +357,8 @@ export async function handleStartSession(data: any, context: any) {
   const sessionsRef = db.collection('sessions');
   const sessionId = `${userId}_${Date.now()}`;
   const sessionRef = sessionsRef.doc(sessionId);
+
+  logger.info('startSession: starting', { function: 'startSession', userId, sessionType, pledgeAmount, durationMinutes });
 
   return db.runTransaction(async (tx) => {
     // Idempotency: ensure no existing session with same idempotencyKey for this user
@@ -512,7 +526,7 @@ export async function handleExpireStaleSessions(data: any, context: any) {
   const graceMinutes = 10; // Grace period after expected session end
   const cutoffTime = admin.firestore.Timestamp.fromMillis(now - graceMinutes * 60 * 1000);
 
-  console.log(`Checking for stale sessions with lastCheckedAt < ${cutoffTime.toDate().toISOString()}`);
+  logger.info('expireStaleSessions: checking', { function: 'expireStaleSessions', cutoff: cutoffTime.toDate().toISOString() });
 
   // Find ACTIVE sessions with stale heartbeat
   const staleSessionsSnap = await db
@@ -523,11 +537,11 @@ export async function handleExpireStaleSessions(data: any, context: any) {
     .get();
 
   if (staleSessionsSnap.empty) {
-    console.log('No stale sessions found');
+    logger.debug('expireStaleSessions: no stale sessions found', { function: 'expireStaleSessions' });
     return { processed: 0 };
   }
 
-  console.log(`Found ${staleSessionsSnap.size} stale sessions to resolve`);
+  logger.info('expireStaleSessions: found stale sessions', { function: 'expireStaleSessions', count: staleSessionsSnap.size });
 
   let resolved = 0;
   let failed = 0;
@@ -547,15 +561,15 @@ export async function handleExpireStaleSessions(data: any, context: any) {
         reason: 'no_heartbeat',
       }, {});
 
-      console.log(`Auto-resolved stale session: ${sessionId}`);
+      logger.info('expireStaleSessions: auto-resolved', { function: 'expireStaleSessions', sessionId });
       resolved++;
     } catch (err: any) {
-      console.error(`Failed to auto-resolve session ${sessionId}:`, err.message);
+      logger.error('expireStaleSessions: failed to auto-resolve', { function: 'expireStaleSessions', sessionId, error: err.message });
       failed++;
     }
   }
 
-  console.log(`Expiry job complete: ${resolved} resolved, ${failed} failed`);
+  logger.info('expireStaleSessions: complete', { function: 'expireStaleSessions', processed: staleSessionsSnap.size, resolved, failed });
   return { processed: staleSessionsSnap.size, resolved, failed };
 }
 
@@ -606,7 +620,7 @@ export async function handleCreateCreditsPurchaseIntent(data: any, context: any)
 
   if (!existingIntent.empty) {
     const existing = existingIntent.docs[0].data();
-    console.log(`Returning cached PaymentIntent for idempotencyKey=${idempotencyKey}`);
+    logger.info('createCreditsPurchaseIntent: returning cached intent', { function: 'createCreditsPurchaseIntent', userId, idempotencyKey });
     return { client_secret: existing.client_secret };
   }
 
@@ -637,10 +651,10 @@ export async function handleCreateCreditsPurchaseIntent(data: any, context: any)
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    console.log(`Created PaymentIntent ${paymentIntent.id} for user ${userId}, pack ${packId}`);
+    logger.info('createCreditsPurchaseIntent: created PaymentIntent', { function: 'createCreditsPurchaseIntent', userId, packId, paymentIntentId: paymentIntent.id });
     return { client_secret: paymentIntent.client_secret };
   } catch (err: any) {
-    console.error('Failed to create PaymentIntent:', err);
+    logger.error('createCreditsPurchaseIntent: failed', { function: 'createCreditsPurchaseIntent', userId, packId, error: err.message });
     throw new functions.https.HttpsError('internal', 'Failed to create payment intent');
   }
 }
@@ -656,7 +670,7 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET not configured');
+    logger.error('stripeWebhook: STRIPE_WEBHOOK_SECRET not configured', { function: 'stripeWebhook' });
     res.status(500).send('Webhook secret not configured');
     return;
   }
@@ -667,7 +681,7 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
     // Verify webhook signature
     event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
   } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
+    logger.error('stripeWebhook: signature verification failed', { function: 'stripeWebhook', error: err.message });
     res.status(400).send(`Webhook Error: ${err.message}`);
     return;
   }
@@ -679,7 +693,7 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
   try {
     const eventSnap = await eventRef.get();
     if (eventSnap.exists) {
-      console.log(`Event ${eventId} already processed. Returning 200.`);
+      logger.info('stripeWebhook: event already processed', { function: 'stripeWebhook', eventId });
       res.status(200).send({ received: true, status: 'already_processed' });
       return;
     }
@@ -699,7 +713,7 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
         break;
       
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        logger.info('stripeWebhook: unhandled event type', { function: 'stripeWebhook', eventType: event.type });
         // Mark as processed even if we don't handle it
         await eventRef.set({
           eventId,
@@ -711,7 +725,7 @@ export const handleStripeWebhook = functions.https.onRequest(async (req, res) =>
 
     res.status(200).send({ received: true });
   } catch (error: any) {
-    console.error('Error processing webhook:', error);
+    logger.error('stripeWebhook: processing error', { function: 'stripeWebhook', eventId, error: error.message });
     res.status(500).send(`Webhook processing error: ${error.message}`);
   }
 });
@@ -728,7 +742,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event, eventRef: Fireb
   const idempotencyKey = paymentIntent.metadata.idempotencyKey || `pi_${paymentIntent.id}`;
 
   if (!userId || !creditsAmount || !packId) {
-    console.error('Missing required metadata in PaymentIntent:', paymentIntent.metadata);
+    logger.error('handlePaymentIntentSucceeded: missing metadata', { function: 'stripeWebhook', metadata: paymentIntent.metadata });
     throw new Error('Invalid PaymentIntent metadata');
   }
 
@@ -740,7 +754,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event, eventRef: Fireb
     .get();
 
   if (!ledgerQuery.empty) {
-    console.log(`Ledger entry for PaymentIntent ${paymentIntent.id} already exists. Skipping fulfillment.`);
+    logger.info('handlePaymentIntentSucceeded: already fulfilled', { function: 'stripeWebhook', paymentIntentId: paymentIntent.id, userId });
     
     // Still mark event as processed
     await eventRef.set({
@@ -808,7 +822,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event, eventRef: Fireb
     }
   });
 
-  console.log(`Fulfilled ${creditsAmount} credits for user ${userId} (PaymentIntent: ${paymentIntent.id})`);
+  logger.info('handlePaymentIntentSucceeded: fulfilled credits', { function: 'stripeWebhook', userId, creditsAmount, paymentIntentId: paymentIntent.id });
 }
 
 /**
@@ -838,7 +852,7 @@ async function handlePaymentIntentFailed(event: Stripe.Event, eventRef: Firebase
     });
   }
 
-  console.log(`Payment failed for user ${userId} (PaymentIntent: ${paymentIntent.id})`);
+  logger.warn('handlePaymentIntentFailed: payment failed', { function: 'stripeWebhook', userId, paymentIntentId: paymentIntent.id });
 }
 
 /**
@@ -868,7 +882,7 @@ async function handlePaymentIntentCanceled(event: Stripe.Event, eventRef: Fireba
     });
   }
 
-  console.log(`Payment canceled for user ${userId} (PaymentIntent: ${paymentIntent.id})`);
+  logger.info('handlePaymentIntentCanceled: payment canceled', { function: 'stripeWebhook', userId, paymentIntentId: paymentIntent.id });
 }
 
 export const stripeWebhook = handleStripeWebhook;

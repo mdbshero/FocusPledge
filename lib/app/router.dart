@@ -6,11 +6,15 @@ import '../features/auth/screens/sign_in_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/wallet/screens/wallet_screen.dart';
 import '../features/wallet/screens/buy_credits_screen.dart';
+import '../features/wallet/screens/transaction_history_screen.dart';
 import '../features/session/screens/session_setup_screen.dart';
 import '../features/session/screens/active_session_screen.dart';
 import '../features/session/screens/redemption_setup_screen.dart';
+import '../features/session/screens/session_history_screen.dart';
 import '../features/shop/screens/shop_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import '../features/settings/screens/privacy_policy_screen.dart';
+import '../features/settings/screens/terms_of_service_screen.dart';
 import '../features/onboarding/screens/onboarding_screen.dart';
 import '../providers/auth_provider.dart';
 import '../services/analytics_service.dart';
@@ -119,6 +123,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'redemption-setup',
                     builder: (context, state) => const RedemptionSetupScreen(),
                   ),
+                  GoRoute(
+                    path: 'session/history',
+                    name: 'session-history',
+                    builder: (context, state) =>
+                        const SessionHistoryScreen(),
+                  ),
+                  GoRoute(
+                    path: 'transactions',
+                    name: 'transactions',
+                    builder: (context, state) =>
+                        const TransactionHistoryScreen(),
+                  ),
                 ],
               ),
             ],
@@ -142,6 +158,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/settings',
                 name: 'settings',
                 builder: (context, state) => const SettingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'privacy-policy',
+                    name: 'privacy-policy',
+                    builder: (context, state) =>
+                        const PrivacyPolicyScreen(),
+                  ),
+                  GoRoute(
+                    path: 'terms-of-service',
+                    name: 'terms-of-service',
+                    builder: (context, state) =>
+                        const TermsOfServiceScreen(),
+                  ),
+                ],
               ),
             ],
           ),

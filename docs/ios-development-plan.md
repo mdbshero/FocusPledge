@@ -95,31 +95,32 @@
 |------|--------|-------|
 | **Onboarding / first-run flow** | ✅ Done | 3-page PageView: Welcome → How It Works → Screen Time Permission. `shared_preferences` first-launch detection. Skip button + `onboardingCompleteProvider` in router. |
 | **Tab navigation / shell route** | ✅ Done | `StatefulShellRoute.indexedStack` with 4 branches + `NavigationBar` (Home, Wallet, Shop, Settings). `ShellScreen` widget. Nested routes under wallet branch. |
-| **Settings screen** | ✅ Done | Account info with avatar, Apple account linking for guests, Screen Time permission status + enable button, blocked apps management, sign-out with confirmation dialog. |
-| **Analytics & crash reporting** | ✅ Done (Flutter) | `AnalyticsService` with 20+ event methods. `FirebaseCrashlytics` in `main.dart`. `FirebaseAnalyticsObserver` on GoRouter. Cloud Functions structured logging still needed. |
-| **Flutter tests** | ❌ Not started | Only `test/widget_test.dart` exists — it's the default Flutter counter test (stale/broken). Need: model unit tests, provider tests, widget tests for critical flows. |
-| **Dashboard / home screen** | ✅ Done | `DashboardScreen` with time-based greeting, wallet summary card, quick action cards, redemption warning banner, Focus Cycle explainer. |
+| **Settings screen** | ✅ Done | Account info with avatar, Apple account linking for guests, Screen Time permission status + enable button, blocked apps management, sign-out with confirmation dialog. Privacy Policy + Terms links wired. |
+| **Analytics & crash reporting** | ✅ Done | `AnalyticsService` with 20+ event methods. `FirebaseCrashlytics` in `main.dart`. Cloud Functions structured logging via `logger.ts`. |
+| **Flutter tests** | ✅ Done | 87 tests passing: model unit tests (Wallet, Session, ShopItem, enums), format helpers, widget tests (ErrorView, LoadingView, EmptyState, BalanceChip, SectionHeader). |
+| **Dashboard / home screen** | ✅ Done | `DashboardScreen` with time-based greeting, wallet summary card, quick action cards, redemption warning banner, Focus Cycle explainer, history shortcuts. |
 
 #### Medium Priority (Polish & Completeness)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| **Session history view** | ❌ Not built | No way to view past sessions. Need a list of completed/failed sessions with details. |
-| **Transaction/ledger history** | ❌ Not built | Wallet shows balances but no transaction history. |
-| **Push notifications** | ❌ Not started | No session reminders, redemption deadline warnings, or completion alerts. Requires APNs setup. |
-| **Offline support / error handling** | ❌ Not started | No connectivity detection, no cached state, no graceful degradation. |
-| **Shared/reusable widgets** | ❌ Empty | `lib/shared/widgets/` and `lib/shared/utils/` are empty directories. |
+| **Session history view** | ✅ Done | `SessionHistoryScreen` with stats summary (total/success/failed/active, success rate bar), session list tiles. Route: `/wallet/session/history`. |
+| **Transaction/ledger history** | ✅ Done | `TransactionHistoryScreen` with ledger entries, icons, amounts. Route: `/wallet/transactions`. |
+| **Push notifications** | ❌ Not started | No session reminders, redemption deadline warnings, or completion alerts. Requires APNs setup (human task). |
+| **Offline support / error handling** | ✅ Done | `ConnectivityNotifier` service with DNS-based check, `OfflineBanner` widget, `ShellScreen` integration. Shared error/loading/empty-state widgets. |
+| **Shared/reusable widgets** | ✅ Done | `ErrorView`, `LoadingView`, `BalanceChip`, `SectionHeader`, `EmptyState`, `OfflineBanner` + `FormatHelpers` utility. |
 
 #### Release (Pre-Submission)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| **Privacy policy** | ❌ Not started | Screen Time usage disclosure, data collection, payment policies |
-| **Terms of service** | ❌ Not started | Closed-loop economy disclosures, skill-first framing |
-| **App Store metadata** | ❌ Not started | Description, keywords, categories, age rating, screenshots |
-| **Production Firebase project** | ❌ Not started | IAM, rules deployment, secrets |
-| **Production Stripe keys** | ❌ Not started | Switch from test to production, configure webhook endpoints |
-| **TestFlight build** | ❌ Not started | Build settings, versioning, release checklist |
+| **Privacy policy** | ✅ Done | `docs/privacy-policy.md` + `PrivacyPolicyScreen` in-app screen. Screen Time, payments, analytics disclosures. |
+| **Terms of service** | ✅ Done | `docs/terms-of-service.md` + `TermsOfServiceScreen` in-app screen. Closed-loop economy, skill-based, no cash-out. |
+| **App Store metadata** | ✅ Done | `docs/app-store-metadata.md` — description, keywords, age rating, review notes, screenshot list. |
+| **Cloud Functions structured logging** | ✅ Done | `functions/src/logger.ts` utility; all handlers updated with structured JSON logs. |
+| **Production Firebase project** | ❌ Not started | IAM, rules deployment, secrets (human task) |
+| **Production Stripe keys** | ❌ Not started | Switch from test to production, configure webhook endpoints (human task) |
+| **TestFlight build** | ❌ Not started | Build settings, versioning, release checklist (human task) |
 
 ---
 
@@ -202,6 +203,22 @@
 - **Analytics + Crash Reporting** — `AnalyticsService` with 20+ event methods (auth, session, purchase, redemption, shop, onboarding, screen time); `FirebaseCrashlytics` fatal error recording in `main.dart`; `FirebaseAnalyticsObserver` on GoRouter; `FirebaseService` updated with analytics + crashlytics accessors
 - **Packages added:** `sign_in_with_apple`, `crypto`, `flutter_stripe`, `shared_preferences`, `firebase_analytics`, `firebase_crashlytics`
 - Zero compile errors, `flutter analyze --no-fatal-infos` clean
+
+### February 26, 2026
+
+- **Shared Reusable Widgets** — Created 6 widgets + 1 utility: `ErrorView`, `LoadingView`, `BalanceChip` (with factory constructors for Credits/Ash/Obsidian/FrozenVotes), `SectionHeader`, `EmptyState`, `OfflineBanner` in `lib/shared/widgets/`; `FormatHelpers` utility in `lib/shared/utils/` with duration/countdown/relativeTime/shortDateTime/statusColor/sessionTypeIcon
+- **Session History Screen** — `SessionHistoryScreen` with stats summary (total/success/failed/active counts, success rate progress bar) and session list tiles with status badges. New providers: `sessionHistoryProvider`, `completedSessionCountProvider`, `failedSessionCountProvider`, `LedgerEntry` class + `ledgerHistoryProvider`
+- **Transaction History Screen** — `TransactionHistoryScreen` with ledger entry list showing icon, description, timestamp, +/- amount. Route: `/wallet/transactions`
+- **Offline Support** — `ConnectivityNotifier` (StateNotifier checking DNS every 10s) + `connectivityProvider`; `OfflineBanner` widget with retry button; `ShellScreen` integration showing banner when offline
+- **Navigation Links** — Added Session History + Transaction History shortcut buttons to both `WalletScreen` and `DashboardScreen`
+- **Flutter Tests** — 87 tests passing: model tests (Wallet serialization/copyWith, Session enums/status, ShopItem enums/constructors), format helper tests, widget tests (ErrorView, LoadingView, EmptyState, BalanceChip, SectionHeader). Replaced stale default counter test.
+- **Cloud Functions Structured Logging** — Created `functions/src/logger.ts` (JSON structured logs with severity/timestamp/context). Updated all handlers: `resolveSession`, `startSession`, `purchaseShopItem`, `expireStaleSessions`, `createCreditsPurchaseIntent`, `stripeWebhook` + payment event handlers. TypeScript compiles clean.
+- **Privacy Policy** — `docs/privacy-policy.md` + `PrivacyPolicyScreen` in-app screen. Covers: Screen Time data (on-device only), Firebase Auth/Firestore/Analytics, Stripe payments, virtual currency disclaimer, children's privacy, data rights.
+- **Terms of Service** — `docs/terms-of-service.md` + `TermsOfServiceScreen` in-app screen. Covers: skill-based system, closed-loop economy, no cash-out, session rules, prohibited conduct, liability.
+- **App Store Metadata** — `docs/app-store-metadata.md` — app name, subtitle, category, full description, keywords, age rating, App Review notes (skill-based not gambling), screenshot list.
+- **Settings Screen Updated** — Terms of Service and Privacy Policy links now navigate to in-app screens instead of TODO placeholders.
+- **Routes Added** — `/wallet/session/history`, `/wallet/transactions`, `/settings/privacy-policy`, `/settings/terms-of-service`
+- **Package added:** `intl` (for DateFormat in format helpers)
 
 ---
 
