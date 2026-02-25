@@ -18,8 +18,7 @@ class TransactionHistoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Transaction History')),
       body: ledgerAsync.when(
-        loading: () =>
-            const LoadingView(message: 'Loading transactions...'),
+        loading: () => const LoadingView(message: 'Loading transactions...'),
         error: (error, _) => ErrorView(
           message: 'Error loading transactions: $error',
           onRetry: () => ref.invalidate(ledgerHistoryProvider),

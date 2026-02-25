@@ -51,10 +51,7 @@ void main() {
 
     test('roundtrips correctly', () {
       for (final category in ItemCategory.values) {
-        expect(
-          ItemCategory.fromFirestore(category.toFirestore()),
-          category,
-        );
+        expect(ItemCategory.fromFirestore(category.toFirestore()), category);
       }
     });
   });

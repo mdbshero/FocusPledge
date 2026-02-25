@@ -10,6 +10,9 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 class FirebaseService {
   static bool _initialized = false;
 
+  /// Whether Firebase was successfully initialized
+  static bool get isInitialized => _initialized;
+
   static FirebaseAuth get auth => FirebaseAuth.instance;
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;
   static FirebaseFunctions get functions => FirebaseFunctions.instance;
@@ -24,9 +27,6 @@ class FirebaseService {
     }
 
     try {
-      // Let the native GoogleService-Info.plist handle default app configuration
-      await Firebase.initializeApp();
-
       // Configure emulator for local development
       const useEmulator = bool.fromEnvironment(
         'USE_EMULATOR',
@@ -34,10 +34,25 @@ class FirebaseService {
       );
 
       if (useEmulator) {
-        debugPrint('🔧 Configuring Firebase emulators...');
+        // In emulator mode, the native SDK may have already initialized from
+        // GoogleService-Info.plist during plugin registration. Just ensure
+        // Firebase is initialized and configure the emulators.
+        debugPrint('🔧 Initializing Firebase for EMULATOR mode...');
+        try {
+          await Firebase.initializeApp();
+        } catch (e) {
+          // [core/duplicate-app] is expected if native SDK already initialized
+          if (e.toString().contains('duplicate-app')) {
+            debugPrint('   ℹ️  Firebase already initialized natively, reusing');
+          } else {
+            rethrow;
+          }
+        }
         await _configureEmulators();
         debugPrint('✅ Firebase initialized with EMULATOR mode');
       } else {
+        // In production, let the native GoogleService-Info.plist handle config
+        await Firebase.initializeApp();
         debugPrint('✅ Firebase initialized for PRODUCTION');
       }
 

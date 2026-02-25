@@ -228,8 +228,7 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          context.push('/wallet/session/history'),
+                      onPressed: () => context.push('/wallet/session/history'),
                       icon: const Icon(Icons.history, size: 18),
                       label: const Text('Session History'),
                     ),
@@ -237,8 +236,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          context.push('/wallet/transactions'),
+                      onPressed: () => context.push('/wallet/transactions'),
                       icon: const Icon(Icons.receipt_long, size: 18),
                       label: const Text('Transactions'),
                     ),

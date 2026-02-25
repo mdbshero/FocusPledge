@@ -24,9 +24,7 @@ class OfflineBanner extends ConsumerWidget {
         connectivity == ConnectivityStatus.checking
             ? 'Checking connection...'
             : 'You\'re offline. Some features may be unavailable.',
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onErrorContainer,
-        ),
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
       ),
       backgroundColor: Theme.of(context).colorScheme.errorContainer,
       actions: [

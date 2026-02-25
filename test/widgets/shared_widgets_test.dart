@@ -26,10 +26,7 @@ void main() {
       var retryTapped = false;
       await tester.pumpWidget(
         _wrapApp(
-          ErrorView(
-            message: 'Error',
-            onRetry: () => retryTapped = true,
-          ),
+          ErrorView(message: 'Error', onRetry: () => retryTapped = true),
         ),
       );
 
@@ -39,9 +36,7 @@ void main() {
     });
 
     testWidgets('hides retry button when no callback', (tester) async {
-      await tester.pumpWidget(
-        _wrapApp(const ErrorView(message: 'Error')),
-      );
+      await tester.pumpWidget(_wrapApp(const ErrorView(message: 'Error')));
 
       expect(find.text('Retry'), findsNothing);
     });
@@ -49,10 +44,7 @@ void main() {
     testWidgets('shows custom icon', (tester) async {
       await tester.pumpWidget(
         _wrapApp(
-          const ErrorView(
-            message: 'No connection',
-            icon: Icons.wifi_off,
-          ),
+          const ErrorView(message: 'No connection', icon: Icons.wifi_off),
         ),
       );
 
@@ -86,12 +78,7 @@ void main() {
   group('EmptyState', () {
     testWidgets('displays icon and title', (tester) async {
       await tester.pumpWidget(
-        _wrapApp(
-          const EmptyState(
-            icon: Icons.inbox,
-            title: 'No sessions yet',
-          ),
-        ),
+        _wrapApp(const EmptyState(icon: Icons.inbox, title: 'No sessions yet')),
       );
 
       expect(find.byIcon(Icons.inbox), findsOneWidget);
@@ -112,8 +99,9 @@ void main() {
       expect(find.text('Start a pledge to begin'), findsOneWidget);
     });
 
-    testWidgets('shows action button when both label and callback provided',
-        (tester) async {
+    testWidgets('shows action button when both label and callback provided', (
+      tester,
+    ) async {
       var actionTapped = false;
       await tester.pumpWidget(
         _wrapApp(
@@ -134,11 +122,7 @@ void main() {
     testWidgets('hides action when no label', (tester) async {
       await tester.pumpWidget(
         _wrapApp(
-          EmptyState(
-            icon: Icons.inbox,
-            title: 'No sessions',
-            onAction: () {},
-          ),
+          EmptyState(icon: Icons.inbox, title: 'No sessions', onAction: () {}),
         ),
       );
 

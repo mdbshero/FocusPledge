@@ -74,10 +74,7 @@ class BalanceChip extends StatelessWidget {
       children: [
         Icon(icon, size: compact ? 14 : 18, color: color),
         const SizedBox(width: 4),
-        Text(
-          '$value',
-          style: textStyle?.copyWith(fontWeight: FontWeight.bold),
-        ),
+        Text('$value', style: textStyle?.copyWith(fontWeight: FontWeight.bold)),
         if (!compact) ...[
           const SizedBox(width: 2),
           Text(

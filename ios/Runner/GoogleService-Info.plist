@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>fake-api-key</string>
+	<string>AIzaSyFakeKeyForLocalDev0123456789abcde</string>
 	<key>GCM_SENDER_ID</key>
-	<string>123456789</string>
+	<string>123456789012</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
@@ -23,8 +23,8 @@
 	<key>IS_GCM_ENABLED</key>
 	<false/>
 	<key>IS_SIGNIN_ENABLED</key>
-	<true/>
+	<false/>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:123456789:ios:abcdef</string>
+	<string>1:123456789012:ios:abcdef1234567890ab</string>
 </dict>
 </plist>

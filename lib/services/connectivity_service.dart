@@ -9,8 +9,8 @@ enum ConnectivityStatus { online, offline, checking }
 /// Provider that tracks network connectivity
 final connectivityProvider =
     StateNotifierProvider<ConnectivityNotifier, ConnectivityStatus>((ref) {
-  return ConnectivityNotifier();
-});
+      return ConnectivityNotifier();
+    });
 
 /// Notifier that periodically checks for network connectivity
 class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
@@ -26,8 +26,9 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityStatus> {
 
   Future<void> _checkConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('google.com')
-          .timeout(const Duration(seconds: 5));
+      final result = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 5));
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
         state = ConnectivityStatus.online;
       } else {

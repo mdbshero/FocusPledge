@@ -126,8 +126,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'session/history',
                     name: 'session-history',
-                    builder: (context, state) =>
-                        const SessionHistoryScreen(),
+                    builder: (context, state) => const SessionHistoryScreen(),
                   ),
                   GoRoute(
                     path: 'transactions',
@@ -162,14 +161,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'privacy-policy',
                     name: 'privacy-policy',
-                    builder: (context, state) =>
-                        const PrivacyPolicyScreen(),
+                    builder: (context, state) => const PrivacyPolicyScreen(),
                   ),
                   GoRoute(
                     path: 'terms-of-service',
                     name: 'terms-of-service',
-                    builder: (context, state) =>
-                        const TermsOfServiceScreen(),
+                    builder: (context, state) => const TermsOfServiceScreen(),
                   ),
                 ],
               ),

@@ -37,10 +37,9 @@ class SessionHistoryScreen extends ConsumerWidget {
           final completed = sessions.where((s) => s.isCompleted).length;
           final failed = sessions.where((s) => s.isFailed).length;
           final active = sessions.where((s) => s.isActive).length;
-          final successRate =
-              (completed + failed) > 0
-                  ? (completed / (completed + failed) * 100).round()
-                  : 0;
+          final successRate = (completed + failed) > 0
+              ? (completed / (completed + failed) * 100).round()
+              : 0;
 
           return CustomScrollView(
             slivers: [
@@ -100,11 +99,12 @@ class SessionHistoryScreen extends ConsumerWidget {
                                   child: LinearProgressIndicator(
                                     value: successRate / 100,
                                     minHeight: 8,
-                                    backgroundColor: Colors.red.withOpacity(0.2),
-                                    valueColor:
-                                        const AlwaysStoppedAnimation(
-                                          Colors.green,
-                                        ),
+                                    backgroundColor: Colors.red.withOpacity(
+                                      0.2,
+                                    ),
+                                    valueColor: const AlwaysStoppedAnimation(
+                                      Colors.green,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -128,13 +128,10 @@ class SessionHistoryScreen extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final session = sessions[index];
-                      return _SessionTile(session: session);
-                    },
-                    childCount: sessions.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final session = sessions[index];
+                    return _SessionTile(session: session);
+                  }, childCount: sessions.length),
                 ),
               ),
 
